@@ -2,13 +2,15 @@
 
 A local Pokémon Mystery Dungeon guild for coding agents in VS Code.
 
-**Development build 0.1.1 — 10 October 2026.** Real VS Code terminal tracking and live Codex native transcript observation are tested. Claude CLI startup and historical native-chat records are verified; live Claude chat tracking still needs a check.
+**Development build 0.1.2 — 10 October 2026.** Real VS Code terminal tracking and live Codex native transcript observation are tested. Claude CLI startup and historical native-chat records are verified; live Claude chat tracking still needs a check.
 
 ## Try it
 
-The local build is installed. In VS Code, press **Ctrl+Shift+P**, run **Developer: Reload Window**, then **PMD Agents: Open Guild**. To install on another local profile, use **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.1.1.vsix`; import/select the local artwork pack separately.
+The local build is installed. In VS Code, press **Ctrl+Shift+P**, run **Developer: Reload Window**, then **PMD Agents: Open Guild**. To install on another local profile, use **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.1.2.vsix`; import/select the local artwork pack separately.
 
 - Team shows terminal jobs and attached provider sessions.
+- Activity shows the selected session's last 32 accepted observations, their time and source. Recently closed sessions remain available there. This journal contains event categories only and lasts for the extension activation.
+- Teammates keep their map positions when other sessions join, leave or link. Attention rises to the top of the roster without reshuffling the map; occupied clearings remain reachable as the team shrinks.
 - Connections lists recent workspace chats from supported local client versions. Attach the intended chat; transcript observation is labelled and may be partial. Disable it with `pmdAgents.observeLocalChats`.
 - Connections → Set up observer hooks previews Codex/Claude configuration, preserves existing hooks and backs up changes. Codex requires its own `/hooks` trust review.
 - Native chats without a window token appear as candidates. Attach the intended session explicitly; reattach after reloading the extension.
@@ -44,7 +46,7 @@ npm run test:extension
 npm run package
 ```
 
-The browser test expects the preview server. The VS Code test uses an isolated profile; set `PMD_VSCODE_EXECUTABLE` for another installation. Neither submits model prompts. Startup-only probes: `npx tsx scripts/probe-clients.ts`.
+The browser test starts and stops its own preview server on a free local port. The VS Code test uses an isolated profile; set `PMD_VSCODE_EXECUTABLE` for another installation. Neither submits model prompts. Startup-only probes: `npx tsx scripts/probe-clients.ts`.
 
 ## Documents
 

@@ -24,7 +24,7 @@ export async function activate(context:vscode.ExtensionContext) {
  let ready=false;
  const evidence=sessions.evidence;
  let publishTimer:ReturnType<typeof setTimeout>|undefined;
- const snapshot=()=>({type:'snapshot',sequence:++sequence,agents:store.snapshot(),links:Object.fromEntries(sessions.links),diagnostics:watcher?.diagnostics,observationEnabled:!!watcher,evidence:Object.fromEntries(evidence),terminalNames:Object.fromEntries(terminalNames),assignments});
+ const snapshot=()=>({type:'snapshot',sequence:++sequence,agents:store.snapshot(),journal:sessions.journal.snapshot(),links:Object.fromEntries(sessions.links),diagnostics:watcher?.diagnostics,observationEnabled:!!watcher,evidence:Object.fromEntries(evidence),terminalNames:Object.fromEntries(terminalNames),assignments});
  const publish=()=>{if(!publishTimer)publishTimer=setTimeout(()=>{publishTimer=undefined;if(panel)void panel.webview.postMessage(snapshot());},80);};
  const receive=(e:Event,direct:boolean,source:Evidence={source:e.provider==='terminal'?'terminal':'hook'})=>{
   sessions.receive(e,direct,source);

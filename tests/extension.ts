@@ -22,6 +22,8 @@ export async function run(){
   const r=api.registration;
   const response=await fetch('http://127.0.0.1:'+r.port+'/event',{method:'POST',headers:{Authorization:'Bearer '+r.token},body:JSON.stringify({window:null,event:{v:1,id:'probe',session:'codex:probe',provider:'codex',kind:'session',at:Date.now()}})});
   assert.equal(response.status,204);assert.equal(api.snapshot().find((a:any)=>a.id==='codex:probe').attached,false);
+  assert.equal(api.sessions.journal.snapshot()['codex:probe'][0].kind,'session');
+  assert.ok(Object.values(api.sessions.journal.snapshot()).some((entries:any)=>entries.some((e:any)=>e.kind==='finish'&&e.source==='terminal')));
   api.sessions.attach('codex:probe');
   const terminal=api.snapshot().find((a:any)=>a.provider==='terminal'&&!a.ended);
   assert.equal(api.sessions.link('codex:probe',terminal.id),true);

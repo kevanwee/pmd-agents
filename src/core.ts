@@ -31,26 +31,28 @@ export class GuildStore {
  private settled=new Set<string>();
  hasSeen(id:string){return this.seen.has(id);}
  apply(e:Event,attached=false) {
-  if(this.seen.has(e.id)) return;
+  if(this.seen.has(e.id)) return false;
   this.seen.add(e.id); if(this.seen.size>4096) this.seen.delete(this.seen.values().next().value!);
   let a=this.agents.get(e.session);
   if(!a) {
    if(this.agents.size>=128) {
     const old=[...this.agents.values()].find(s=>s.ended||!s.attached);
-    if(!old) return; this.agents.delete(old.id);
+    if(!old) return false; this.agents.delete(old.id);
    }
    a={id:e.session,provider:e.provider,parent:e.parent,attached,activity:'idle',attention:'none',outcome:'',ended:false,lastSeen:e.at,tools:{}};
    this.agents.set(a.id,a);
   }
   a.attached ||= attached;
   if(e.parent) a.parent=e.parent;
-  if(a.ended) return;
+  if(a.ended) return false;
   const turnKey=e.session+':'+(e.turn||'');
-  if(e.turn && this.settled.has(turnKey) && !['end','session'].includes(e.kind)) return;
-  if(e.turn && a.turn && e.turn!==a.turn && e.at<a.lastSeen) return;
+  if(e.turn && this.settled.has(turnKey) && !['end','session'].includes(e.kind)) return false;
+  if(e.turn && a.turn && e.turn!==a.turn && e.at<a.lastSeen) return false;
+  if(e.kind==='pulse'&&a.outcome&&(!e.turn||e.turn===a.turn))return false;
+  const key=turnKey+':'+e.tool;
+  if(['tool-start','tool-end','approval','input'].includes(e.kind)&&e.tool&&this.done.has(key))return false;
   if(e.turn && e.turn!==a.turn) {a.turn=e.turn; a.tools={}; a.attention='none'; a.attentionTool=undefined; a.outcome='';}
   a.lastSeen=Math.max(a.lastSeen,e.at);
-  const key=turnKey+':'+e.tool;
   switch(e.kind) {
    case 'session': break;
    case 'pulse': if(a.activity==='idle'&&!a.outcome)a.activity='working';break;
@@ -64,12 +66,17 @@ export class GuildStore {
    case 'approval': if(!e.tool||!this.done.has(key)){a.attention='approval';a.attentionTool=e.tool;}break;
    case 'input': a.attention='input';a.attentionTool=e.tool;break;
    case 'finish': case 'failure': case 'interrupt':
+    for(const tool of Object.keys(a.tools)){
+     this.done.add(e.session+':'+(a.turn||'')+':'+tool);
+     this.done.add(e.session+'::'+tool);
+    }
     a.tools={};a.activity='idle';a.attention=e.kind==='failure'?'error':'none';
     a.outcome=e.kind==='finish'?'finished':e.kind==='failure'?'failed':'interrupted';
     if(e.turn)this.settled.add(turnKey);break;
    case 'end': a.ended=true;a.activity='idle';a.tools={};a.attention='none';break;
   }
   for(const set of [this.done,this.settled]) if(set.size>4096)set.delete(set.values().next().value!);
+  return true;
  }
  private activity(a:Agent):Activity {
   const values=Object.values(a.tools);

@@ -2,6 +2,16 @@
 
 The owner authorized building after the planning pass. This branch delivers a first usable slice, not the entire roadmap.
 
+## 0.1.2: stable teammates and an activity journal
+
+`src/placement.ts` reserves a position per visible session while the guild view is open. Removing, linking or reordering another session no longer teleports surviving actors. Freed slots can be reused; later clearings remain reachable even when earlier ones empty. Attention sorts the roster independently of map placement. This is presentation state, not persisted window membership, and resets when the view is recreated.
+
+`src/journal.ts` records the last 32 accepted event categories per tracked session, with original timestamps and observation source. It retains no chat text, commands, paths, tool IDs or tool payloads. Consecutive generation pulses coalesce. History is bounded by the existing 128-session store, pruned with evicted sessions and never written to disk. The Activity tab explains the selected actor's current motion and lists observations; up to eight recently closed attached sessions can be selected there. Demo history is isolated and labelled simulated.
+
+The reducer now explicitly reports whether an event was accepted. Duplicate, late settled-turn and already-ended tool events do not enter the journal or refresh source evidence. Known tool completions arriving after an unnumbered turn finishes cannot restart its animation. Source formats without turn IDs still cannot provide perfect ordering for every unknown tool.
+
+Validation: 32 focused tests; browser checks for actual patrol movement, approval stops, stable survivor coordinates, sparse clearing navigation, journal contents, closed-session inspection and narrow controls; a real VS Code terminal test confirms accepted shell events reach the journal. Browser checks start their own disposable local preview server. Journal screenshots produced by browser fixtures are test replays, not captures of a live user's chat.
+
 ## 0.1.1: visible work and session management
 
 The owner reported Eevee standing still while Codex was thinking/outputting. Generic Working now follows a short checked patrol using Walk frames. Explicit editing retains dummy attacks; approval/input, unknown stale state, lost observation, Quiet and reduced motion stop movement. Native reasoning/assistant record metadata produces a `pulse` that refreshes observed activity without inspecting or retaining text, clearing attention, or claiming completion.
@@ -74,7 +84,7 @@ The tree is conservatively blocked; no foreground mask is fabricated. Training d
 ## Validation
 
 - TypeScript typecheck and production bundles.
-- Twenty-six focused tests: concurrent/reordered events, attention, generation pulses, stale state, redaction, child identity, wire validation, hook merge/removal, geometry, animation timing, asset hashes, two-receiver routing, native transcript reconstruction, version/workspace gates, split UTF-8/truncation handling, source recovery and session membership/linking.
+- Thirty-two focused tests cover state ordering, attention, redaction, source recovery, window membership/linking, bounded journal history, stable placement, native transcript parsing, asset integrity and local transport.
 - Playwright: demo isolation, roster, credits, paused simulation and 320px layout; desktop and narrow screenshots visually inspected.
 - Real VS Code: terminal lifecycle, shell command, webview ready and unbound hook candidate.
 - Actual CLI startup probes described above.

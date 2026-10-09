@@ -1,11 +1,13 @@
 import {GuildStore,type Event} from './core';
 import type {Evidence} from './transcripts';
+import {ActivityJournal} from './journal';
 
 /** Window-local membership and source arbitration. Never infer ownership from cwd. */
 export class Sessions {
  readonly store=new GuildStore();
  readonly evidence=new Map<string,Evidence>();
  readonly links=new Map<string,string>();
+ readonly journal=new ActivityJournal();
  private excluded=new Set<string>();
  private hookAt=new Map<string,number>();
 
@@ -28,9 +30,12 @@ export class Sessions {
    this.hookAt.set(event.session,now);
   }
   const parentAttached=event.parent&&this.store.agents.get(event.parent)?.attached;
-  this.store.apply(event,!this.excluded.has(event.session)&&(direct||!!parentAttached));
+  const accepted=this.store.apply(event,!this.excluded.has(event.session)&&(direct||!!parentAttached));
   if(this.excluded.has(event.session))this.store.detach(event.session);
-  if(this.store.agents.has(event.session))this.evidence.set(event.session,{...source,connection:'observing'});
+  if(accepted){
+   this.evidence.set(event.session,{...source,connection:'observing'});
+   this.journal.record(event,source.source);
+  }
   this.prune();
  }
  attach(id:string){
@@ -57,6 +62,7 @@ export class Sessions {
  }
  pauseTranscripts(){for(const [id,e] of this.evidence)if(e.source==='transcript')this.mark(id,'paused');}
  private prune(){
+  this.journal.prune(new Set(this.store.agents.keys()));
   for(const id of this.evidence.keys())if(!this.store.agents.has(id)){this.evidence.delete(id);this.hookAt.delete(id);this.excluded.delete(id);}
   for(const [id,terminal] of this.links){
    const a=this.store.agents.get(id),t=this.store.agents.get(terminal);

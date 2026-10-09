@@ -1,20 +1,23 @@
 import type {Evidence} from '../transcripts';
 import {GuildStore,status,type Agent,type Event} from '../core';
+import {ActivityJournal,journalText,type JournalEntry} from '../journal';
+import {Placement} from '../placement';
 import {frameAt,slots,clearPath,facing,type Pack,type Species,type Point} from '../world';
-declare global {interface Window {PMD_BOOT:{pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];links?:Record<string,string>;diagnostics?:{files:number;unsupported:number;readErrors:number;lastScan:number};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
+declare global {interface Window {PMD_BOOT:{pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;unsupported:number;readErrors:number;lastScan:number};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
 const host=window.acquireVsCodeApi?.();
 const boot=window.PMD_BOOT;
 const pack=boot.pack;
 let agents=boot.agents||[],assignments=boot.assignments||{},terminalNames=boot.terminalNames||{};
 let evidence=boot.evidence||{};
+let journal=boot.journal||{};
 let links=boot.links||{},diagnostics=boot.diagnostics,observationEnabled=boot.observationEnabled;
-const displayStatus=(a:Agent)=>!demo&&evidence[a.id]?.connection==='paused'?'Observation paused':!demo&&evidence[a.id]?.connection==='unavailable'?'Observation unavailable':status(a);
+const displayStatus=(a:Agent)=>a.ended?status(a):!demo&&evidence[a.id]?.connection==='paused'?'Observation paused':!demo&&evidence[a.id]?.connection==='unavailable'?'Observation unavailable':status(a);
 const sourceLabel=(a:Agent)=>{const e=evidence[a.id];return e?.source==='transcript'?'Local transcript · '+(e.client||'client')+' '+(e.version||'')+(e.partial?' · partial history':''):e?.source==='hook'?'Observer hook':'Shell integration';};
 let selected='',demo=false,quiet=host?.getState()?.quiet??false,visible=true,area=0;
-let tab:'team'|'connections'|'credits'='team';
+let tab:'team'|'activity'|'connections'|'credits'='team';
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<header><div class="brand"><span class="guild-mark" aria-hidden="true">✦</span><div><span class="eyebrow">EXPLORATION GUILD</span><h1>PMD Agents</h1></div></div><div class="header-actions"><span id="mode" class="mode">Current window</span><button id="quiet" aria-pressed="false" title="Pause world animations">Quiet</button><button id="demo">Try demo</button></div></header>
-<main><section class="world-panel" aria-label="Guild world"><div class="scene-heading"><div><span class="eyebrow">FRIEND AREA 01</span><h2>Thunder Meadow</h2></div><span class="scene-tag">Training ground</span></div><div class="canvas-wrap"><canvas aria-label="Pokémon guild. Use the team list to select a session."></canvas><div id="empty" class="empty"></div><div class="world-tools"><span id="population"></span><button id="area" hidden>Next clearing</button></div></div><section id="details" class="dialogue" aria-label="Selected session"></section></section><aside><nav aria-label="Guild information"><button data-tab="team" aria-pressed="true">Team</button><button data-tab="connections">Connections</button><button data-tab="credits">Credits</button></nav><div id="sidebar"></div></aside></main><footer><span>Unofficial, non-commercial fan project</span><button id="credits">Credits & sources</button><span id="live-status" role="status" aria-live="polite"></span></footer>`;
+<main><section class="world-panel" aria-label="Guild world"><div class="scene-heading"><div><span class="eyebrow">FRIEND AREA 01</span><h2>Thunder Meadow</h2></div><span class="scene-tag">Training ground</span></div><div class="canvas-wrap"><canvas aria-label="Pokémon guild. Use the team list to select a session."></canvas><div id="empty" class="empty"></div><div class="world-tools"><span id="population"></span><button id="area" hidden>Next clearing</button></div></div><section id="details" class="dialogue" aria-label="Selected session"></section></section><aside><nav aria-label="Guild information"><button data-tab="team" aria-pressed="true">Team</button><button data-tab="activity">Activity</button><button data-tab="connections">Connections</button><button data-tab="credits">Credits</button></nav><div id="sidebar"></div></aside></main><footer><span>Unofficial, non-commercial fan project</span><button id="credits">Credits & sources</button><span id="live-status" role="status" aria-live="polite"></span></footer>`;
 const canvas=app.querySelector('canvas')!;
 const ctx=canvas.getContext('2d')!;
 const sidebar=app.querySelector<HTMLDivElement>('#sidebar')!;
@@ -23,6 +26,7 @@ const empty=app.querySelector<HTMLDivElement>('#empty')!;
 const imageCache=new Map<string,HTMLImageElement>();
 const failedImages=new Set<string>();
 const actors=new Map<string,{p:Point;target:Point;slot:number;direction:number;elapsed:number;rest:number}>();
+const placement=new Placement();
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 let frame=0,last=0,drawCount=0;
 const send=(msg:unknown)=>host?.postMessage(msg);
@@ -35,9 +39,11 @@ const node=(tag:string,text:string,className='')=>{const el=document.createEleme
 const species=(a:Agent):Species|undefined=>pack?.sprites.find(s=>s.id===assignments[a.id])||pack?.sprites[[...a.id].reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,0)%pack.sprites.length];
 const label=(a:Agent)=>a.provider==='terminal'?(terminalNames[a.id]||'Terminal'):a.provider==='codex'?'Codex':'Claude Code';
 const shown=()=>{const linked=new Set(demo?[]:Object.entries(links).filter(([id])=>agents.some(a=>a.id===id&&a.attached&&!a.ended)).map(([,terminal])=>terminal));return agents.filter(a=>a.attached&&!a.ended&&!linked.has(a.id));};
+const inClearing=()=>{const pages=placement.pages(),page=pages.includes(area)?area:pages[0]??0;return shown().filter(a=>placement.page(a.id)===page);};
 function ensureActors(){
- const ids=new Set(shown().map(a=>a.id));for(const id of actors.keys())if(!ids.has(id))actors.delete(id);
- for(const [n,a] of shown().entries()){
+ const team=shown(),ids=new Set(team.map(a=>a.id));placement.sync([...ids]);for(const id of actors.keys())if(!ids.has(id))actors.delete(id);
+ for(const a of team){
+  const n=placement.slots.get(a.id)!;
   const old=actors.get(a.id),p=slots[n%slots.length];
   if(!old||old.slot!==n)actors.set(a.id,{p:{...p},target:{...p},slot:n,direction:old?.direction||0,elapsed:old?.elapsed||0,rest:0});
  }
@@ -50,15 +56,15 @@ function render() {
  const focusKey=(document.activeElement as HTMLElement)?.dataset?.focusKey;
  const scrollTop=sidebar.scrollTop;
  const team=shown(),candidates=agents.filter(a=>!a.attached&&!a.ended);
- if(!team.some(a=>a.id===selected))selected=team[0]?.id||'';
+ if(!team.some(a=>a.id===selected)&&!(tab==='activity'&&agents.some(a=>a.id===selected&&a.attached&&a.ended)))selected=team[0]?.id||'';
  app.querySelector('#mode')!.textContent=demo?'DEMO · simulated sessions':'Current window';
  app.querySelector('#mode')!.className='mode'+(demo?' demo':'');
  app.querySelector('#demo')!.textContent=demo?'Exit demo':'Try demo';
  app.querySelector('#quiet')!.setAttribute('aria-pressed',String(quiet));
  app.querySelector('#quiet')!.textContent=quiet?'Resume motion':'Quiet';
- const pages=Math.max(1,Math.ceil(team.length/slots.length));
- area=Math.min(area,pages-1);
- app.querySelector('#population')!.textContent=team.length+' '+(team.length===1?'session':'sessions')+(pages>1?' · clearing '+(area+1)+' / '+pages:'');
+ const pages=Math.max(1,placement.pages().length);
+ if(!placement.pages().includes(area))area=placement.pages()[0]??0;
+ app.querySelector('#population')!.textContent=team.length+' '+(team.length===1?'session':'sessions')+(pages>1?' · clearing '+(placement.pages().indexOf(area)+1)+' / '+pages:'');
  (app.querySelector('#area') as HTMLButtonElement).hidden=pages===1;
  empty.replaceChildren();empty.hidden=!!pack&&team.length>0&&!failedImages.size;
  if(!empty.hidden){empty.append(node('h3',failedImages.size?'An artwork file could not load':!pack?'Your guild is ready':'A quiet moment'));
@@ -67,7 +73,7 @@ function render() {
   else empty.append(button('Connect agents',()=>{tab='connections';render();},'primary'));
  }
  details.replaceChildren();
- const a=team.find(x=>x.id===selected);
+ const a=team.find(x=>x.id===selected)||(tab==='activity'?agents.find(x=>x.id===selected&&x.attached&&x.ended):undefined);
  if(a){
   const sp=species(a);if(sp){const portrait=document.createElement('img');portrait.src=boot.assetBase+sp.portrait;portrait.alt=sp.name;portrait.className='portrait';details.append(portrait);}
   const body=node('div','','dialogue-body');
@@ -76,8 +82,8 @@ function render() {
   body.append(node('p',demo?'Simulated activity':sourceLabel(a)+' · last seen '+new Date(a.lastSeen).toLocaleTimeString()+(links[a.id]?' · linked to '+(terminalNames[links[a.id]]||'terminal'):'')));
   details.append(body);
   const actions=node('div','','detail-actions');
-  if(!demo)actions.append(button(focusLabel(a),()=>send({type:'focus',id:a.id}),'primary'));
-  if(!demo)actions.append(button('Manage session',()=>{tab='connections';render();}));
+  if(!demo&&!a.ended)actions.append(button(focusLabel(a),()=>send({type:'focus',id:a.id}),'primary'));
+  if(!demo&&!a.ended)actions.append(button('Manage session',()=>{tab='connections';render();}));
   if(pack){const select=document.createElement('select');select.dataset.focusKey='species:'+a.id;select.setAttribute('aria-label','Pokémon for selected session');
    for(const s of pack.sprites){const o=document.createElement('option');o.value=s.id;o.textContent=s.name;select.append(o);}
    select.value=sp!.id;select.onchange=()=>{assignments[a.id]=select.value;if(!demo)send({type:'character',id:a.id,species:select.value});render();};actions.append(select);}
@@ -88,9 +94,10 @@ function render() {
  if(tab==='team'){
   sidebar.append(node('div','EXPLORATION TEAM','section-label'));
   if(!team.length)sidebar.append(node('p','Connected sessions will appear here.','muted'));
-  for(const member of team){
+  const rank=(a:Agent)=>({approval:0,input:1,error:2,none:3}[a.attention]);
+  for(const member of [...team].sort((a,b)=>rank(a)-rank(b))){
    const sp=species(member);
-   const row=button('',()=>{selected=member.id;area=Math.floor(team.findIndex(a=>a.id===member.id)/slots.length);render();},'team-row');
+   const row=button('',()=>{selected=member.id;area=placement.page(member.id);render();},'team-row');
    row.dataset.focusKey='team:'+member.id;
    row.setAttribute('aria-pressed',String(selected===member.id));
    if(sp){const portrait=document.createElement('img');portrait.src=boot.assetBase+sp.portrait;portrait.alt='';row.append(portrait);}
@@ -99,6 +106,27 @@ function render() {
    sidebar.append(row);
   }
   if(candidates.length)sidebar.append(button(candidates.length+' sessions available to attach',()=>{tab='connections';render();},'attach-summary'));
+ }else if(tab==='activity'){
+  sidebar.append(node('div','GUILD JOURNAL','section-label'));
+  if(!a)sidebar.append(node('p','Select a teammate to see its observed activity.','muted'));
+  else{
+   sidebar.append(node('h3',label(a)+' · '+(species(a)?.name||'Session')),node('p',displayStatus(a),'activity-status'));
+   const frozen=quiet||reduced.matches||a.attention!=='none'||['Status unconfirmed','Observation unavailable','Observation paused'].includes(displayStatus(a));
+   const motion=a.ended?'Left the clearing':frozen?'Movement paused':a.activity==='editing'?'Practising attacks':a.activity==='idle'?'Resting':'Patrolling the clearing';
+   sidebar.append(node('p',motion+' · '+Object.keys(a.tools).length+' active tools','muted'));
+   if(a.parent)sidebar.append(node('p','Child of '+a.parent.slice(-6),'muted'));
+   sidebar.append(node('p',demo?'Simulated activity for this demo.':'Observed events only. Chat text and commands are not retained.','muted'));
+   const entries=(demo?demoJournal.snapshot():journal)[a.id]||[];
+   if(!entries.length)sidebar.append(node('p','No activity recorded yet.','muted'));
+   const list=document.createElement('ol');list.className='journal';list.setAttribute('aria-label','Recent session activity');
+   for(const entry of [...entries].reverse()){
+    const row=node('li','','journal-entry'),time=document.createElement('time');time.dateTime=new Date(entry.at).toISOString();time.textContent=new Date(entry.at).toLocaleTimeString();time.title=new Date(entry.at).toLocaleString();
+    row.append(node('strong',journalText(entry,a.provider)),time,node('span',entry.source==='transcript'?'Local transcript':entry.source==='hook'?'Observer hook':'Shell integration','journal-source'));list.append(row);
+   }
+   sidebar.append(list);
+  }
+  const recent=agents.filter(a=>a.attached&&a.ended).sort((a,b)=>b.lastSeen-a.lastSeen).slice(0,8);
+  if(recent.length){sidebar.append(node('h3','Recently closed'));for(const ended of recent)sidebar.append(button(label(ended)+' · '+ended.id.slice(-6),()=>{selected=ended.id;render();},'recent-session'));}
  }else if(tab==='connections'){
   sidebar.append(node('div','PROVIDER CONNECTIONS','section-label'));
   sidebar.append(node('h3','Keep your own chats'),node('p','Recent local Codex and Claude chat activity appears here automatically for supported client versions. Attach a session to bring it into your guild.','muted'));
@@ -164,7 +192,7 @@ function draw(delta:number){
  const ox=Math.round((w-map.width*scale)/2),oy=Math.round((h-map.height*scale)/2);
  ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.imageSmoothingEnabled=false;
  if(bg)ctx.drawImage(bg,0,0);
- const list=shown().slice(area*slots.length,(area+1)*slots.length);
+ const list=inClearing();
  const now=Date.now(),still=quiet||reduced.matches;
  for(const a of list){
   const actor=actors.get(a.id)!;
@@ -219,34 +247,36 @@ new ResizeObserver(()=>draw(0)).observe(canvas);
 document.addEventListener('visibilitychange',restart);reduced.addEventListener('change',restart);
 app.addEventListener('focusout',e=>{if(e.target instanceof HTMLSelectElement)setTimeout(render,0);});
 app.querySelector('#quiet')!.addEventListener('click',()=>{quiet=!quiet;host?.setState({quiet});render();restart();});
-app.querySelector('#area')!.addEventListener('click',()=>{area=(area+1)%Math.max(1,Math.ceil(shown().length/slots.length));render();});
+app.querySelector('#area')!.addEventListener('click',()=>{const pages=placement.pages();area=pages[(pages.indexOf(area)+1)%Math.max(1,pages.length)]??0;render();});
 app.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>{tab=el.getAttribute('data-tab') as typeof tab;render();}));
 app.querySelector('#credits')!.addEventListener('click',()=>{tab='credits';render();});
 let saved:Agent[]=[];let demoTimer:ReturnType<typeof setInterval>|undefined;
 let demoStore=new GuildStore();let demoTurn=0;
+let demoJournal=new ActivityJournal();
 function demoStep(){
  const id='demo-codex',turn='turn-'+(++demoTurn);
- const emit=(session:string,kind:Event['kind'],extra:Partial<Event>={})=>demoStore.apply({v:1,id:crypto.randomUUID(),session,provider:session===id?'codex':'claude',at:Date.now(),kind,...extra},true);
+ const emit=(session:string,kind:Event['kind'],extra:Partial<Event>={})=>{const e:Event={v:1,id:crypto.randomUUID(),session,provider:session===id?'codex':'claude',at:Date.now(),kind,...extra};if(demoStore.apply(e,true))demoJournal.record(e,'hook');};
  emit(id,'turn',{turn});emit(id,'tool-start',{turn,tool:'edit',activity:'editing'});
  emit('demo-claude','turn');emit('demo-claude','tool-start',{tool:'read-'+demoTurn,activity:'reading'});
  emit('demo-review','turn');emit('demo-review','approval');
  agents=demoStore.snapshot();render();
 }
 app.querySelector('#demo')!.addEventListener('click',()=>{
- demo=!demo;area=0;actors.clear();
- if(demo){saved=agents;demoStore=new GuildStore();Object.assign(assignments,{'demo-codex':'eevee','demo-claude':'riolu','demo-review':'ceruledge'});demoStep();demoTimer=setInterval(()=>{
-  const a=demoStore.agents.get('demo-review')!;a.attention=a.attention==='approval'?'input':'approval';agents=demoStore.snapshot();render();
+ demo=!demo;area=0;actors.clear();placement.clear();
+ if(demo){saved=agents;demoStore=new GuildStore();demoJournal=new ActivityJournal();Object.assign(assignments,{'demo-codex':'eevee','demo-claude':'riolu','demo-review':'ceruledge'});demoStep();demoTimer=setInterval(()=>{
+  const a=demoStore.agents.get('demo-review')!,e:Event={v:1,id:crypto.randomUUID(),session:a.id,provider:a.provider,kind:a.attention==='approval'?'input':'approval',at:Date.now()};
+  if(demoStore.apply(e,true))demoJournal.record(e,'hook');agents=demoStore.snapshot();render();
  },8000);}else{clearInterval(demoTimer);agents=saved;render();send({type:'ready'});}
 });
 window.addEventListener('message',event=>{
  const m=event.data;
- if(m.type==='snapshot'){links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
+ if(m.type==='snapshot'){journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
  if(m.type==='visibility'){visible=m.visible;restart();}
 });
 canvas.addEventListener('click',event=>{
  const rect=canvas.getBoundingClientRect(),dpr=devicePixelRatio||1,scale=Math.max(1,Math.round(Math.min(canvas.width/456,canvas.height/335)));
  const x=((event.clientX-rect.left)*dpr-(canvas.width-456*scale)/2)/scale,y=((event.clientY-rect.top)*dpr-(canvas.height-335*scale)/2)/scale;
- const hit=shown().slice(area*6,(area+1)*6).find(a=>{const p=actors.get(a.id)!.p;return Math.abs(p.x-x)<16&&y<p.y+5&&y>p.y-45;});
+ const hit=inClearing().find(a=>{const p=actors.get(a.id)!.p;return Math.abs(p.x-x)<16&&y<p.y+5&&y>p.y-45;});
  if(hit){selected=hit.id;render();}
 });
 render();restart();send({type:'ready'});

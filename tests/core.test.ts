@@ -38,6 +38,11 @@ test('late events cannot revive a closed session',()=>{
  const s=new GuildStore();s.apply(event('end'));s.apply(event('tool-start',{tool:'a'}));
  assert.equal(status(s.snapshot()[0]),'Session closed');
 });
+test('late tool ends without turn IDs do not restart a finished turn',()=>{
+ const s=new GuildStore();s.apply(event('tool-start',{tool:'a'}));s.apply(event('finish'));
+ assert.equal(s.apply(event('tool-end',{tool:'a'})),false);assert.equal(s.snapshot()[0].activity,'idle');
+ assert.equal(s.snapshot()[0].outcome,'finished');
+});
 test('observed generation refreshes activity without dismissing attention or inventing completion',()=>{
  const s=new GuildStore();s.apply(event('pulse'));assert.equal(s.snapshot()[0].activity,'working');
  s.apply(event('input'));s.apply(event('pulse'));assert.equal(s.snapshot()[0].attention,'input');assert.equal(s.snapshot()[0].outcome,'');
