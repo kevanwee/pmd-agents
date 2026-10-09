@@ -1,0 +1,10 @@
+node_modules/
+dist/
+artifacts/
+.runtime/
+*.vsix
+.env
+.env.*
+!.env.example
+*.log
+assets/local/
