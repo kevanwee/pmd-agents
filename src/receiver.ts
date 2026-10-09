@@ -27,4 +27,3 @@ export async function startReceiver(directory:string,onEvent:(e:Event,direct:boo
  await save();
  return {registration,async dispose(){server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));await unlink(file).catch(()=>{});}};
 }
-

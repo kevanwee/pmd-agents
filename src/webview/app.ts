@@ -221,4 +221,3 @@ canvas.addEventListener('click',event=>{
 render();restart();send({type:'ready'});
 // Update freshness labels without advancing simulation or inventing completions.
 setInterval(()=>{if(visible&&!document.hidden)render();},15000);
-

@@ -25,4 +25,3 @@ async function main() {
 }
 const deadline=setTimeout(()=>process.exit(0),1500);
 main().catch(()=>{}).finally(()=>{clearTimeout(deadline);process.exit(0);});
-

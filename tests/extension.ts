@@ -27,4 +27,3 @@ export async function run(){
  assert.ok(api.snapshot().some((a:any)=>a.provider==='terminal'&&a.ended));
  console.log('PMD extension: real terminal lifecycle, shell command, webview and candidate routing passed.');
 }
-

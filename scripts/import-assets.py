@@ -83,4 +83,3 @@ get("LICENSE.md")
 manifest["files"]=records
 (out/"manifest.json").write_text(json.dumps(manifest,indent=2)+"\n",encoding="utf-8")
 print(f"Imported {len(manifest['sprites'])} Pokémon, one map, native timings/shadow anchors and {len(records)} source receipts into {out}")
-

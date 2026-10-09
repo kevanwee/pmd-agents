@@ -28,4 +28,3 @@ export function frameAt(anim:Animation,elapsed:number){
  for(let i=0;i<anim.durations.length;i++){if(tick<anim.durations[i])return i;tick-=anim.durations[i];}
  return 0;
 }
-

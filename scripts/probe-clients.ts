@@ -44,4 +44,3 @@ await new Promise<void>(resolveProbe=>{
 await receiver.dispose();
 await writeFile('artifacts/client-probe-summary.json',JSON.stringify(report,null,2));
 console.log(JSON.stringify(report,null,2));
-

@@ -139,4 +139,3 @@ export function startTranscriptWatcher(roots:string[],onEvent:(event:Event,evide
  const timer=setInterval(()=>void tick(),1000);void tick();
  return {diagnostics,dispose(){disposed=true;clearInterval(timer);tails.clear();}};
 }
-

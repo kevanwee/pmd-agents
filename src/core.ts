@@ -86,4 +86,3 @@ export function status(a:Agent,now=Date.now()) {
  if(a.provider==='terminal'&&a.activity==='idle')return 'Terminal present';
  return {idle:'Idle',working:'Working',reading:'Reading / searching',editing:'Editing',running:'Running command'}[a.activity];
 }
-

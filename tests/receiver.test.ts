@@ -30,4 +30,3 @@ test('receiver authenticates, rejects browser origins and keeps two windows sepa
   assert.ok(!JSON.stringify(seen).includes('secret'));
  }finally{await a.dispose();await b.dispose();await rm(dir,{recursive:true,force:true});}
 });
-

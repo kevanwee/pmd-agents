@@ -8,4 +8,3 @@ test('local pack has real sheets, frame anchors and hash-matched provenance',asy
  const m=JSON.parse(await readFile('assets/local/manifest.json','utf8'));
  for(const f of m.files){assert.equal(createHash('sha256').update(await readFile('assets/local/'+f.file)).digest('hex'),f.sha256);assert.ok(f.source);}
 });
-

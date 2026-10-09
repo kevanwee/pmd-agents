@@ -65,4 +65,3 @@ test('native durations run at 60 ticks per second',()=>{
  const a={file:'',w:20,h:20,rows:1,durations:[6,12],anchors:[],hit:0};
  assert.equal(frameAt(a,99),0);assert.equal(frameAt(a,101),1);assert.equal(frameAt(a,301),0);
 });
-

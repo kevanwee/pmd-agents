@@ -28,4 +28,3 @@ export function normalize(provider:Provider,raw:unknown):Event|undefined {
  if(toolName==='askuserquestion'||toolName==='request_user_input')event.kind='input';
  return event;
 }
-

@@ -10,4 +10,3 @@ await Promise.all([
  copyFile('src/webview/style.css','media/style.css')
 ]);
 console.log('Built extension, observer hook and guild view.');
-

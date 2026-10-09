@@ -29,4 +29,3 @@ export async function setup(context:vscode.ExtensionContext,remove=false) {
  const temp=file+'.'+randomUUID()+'.tmp';await writeFile(temp,after,{mode:0o600});await rename(temp,file);
  void vscode.window.showInformationMessage(provider==='Codex'&&!remove?'Observer installed. Review and trust it using Codex /hooks, then start a new turn. No trust bypass is used.':'PMD observer hooks updated. New sessions may be needed for the provider to load them.');
 }
-

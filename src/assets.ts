@@ -32,4 +32,3 @@ export async function loadPack(directory:string):Promise<Pack> {
  await file('PixelifySans.woff2');
  return p;
 }
-

@@ -25,4 +25,3 @@ assert.ok(await page.getByRole('button',{name:'Attach to this window',exact:true
 assert.equal(await page.locator('canvas').getAttribute('data-actors'),'0');
 assert.deepEqual(errors,[]);
 await browser.close();console.log('Browser checks passed: demo isolation, roster, credits, quiet mode, 320px layout. Screenshots in artifacts/.');
-

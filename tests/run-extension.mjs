@@ -13,4 +13,3 @@ await runTests({
  launchArgs:[resolve('artifacts/test-workspace'),'--user-data-dir',profile,'--extensions-dir',resolve('artifacts/test-extensions'),'--disable-extensions','--skip-welcome','--skip-release-notes','--disable-workspace-trust'],
  extensionTestsEnv:{PMD_AGENTS_REGISTRY:resolve('artifacts/test-registry')}
 });
-

@@ -19,4 +19,3 @@ const server=createServer(async(req,res)=>{
  }catch{res.writeHead(404).end();}
 });
 server.listen(port,'127.0.0.1',()=>console.log('PMD replay preview: http://127.0.0.1:'+port));
-

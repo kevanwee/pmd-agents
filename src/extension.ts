@@ -121,4 +121,3 @@ export async function activate(context:vscode.ExtensionContext) {
   vscode.commands.registerCommand('pmdAgents.removeHooks',()=>setup(context,true)));
  return {snapshot:()=>store.snapshot(),...(context.extensionMode===vscode.ExtensionMode.Test?{registration:receiver.registration,ready:()=>ready}: {})};
 }
-
