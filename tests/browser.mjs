@@ -1,0 +1,28 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
+await mkdir('artifacts',{recursive:true});
+const browser=await chromium.launch({headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://127.0.0.1:5188');await page.getByRole('button',{name:'Try demo'}).click();
+await page.waitForFunction(()=>document.querySelector('canvas').dataset.actors==='3');
+await page.waitForTimeout(1500);
+assert.equal(await page.locator('.team-row').count(),3);
+await page.screenshot({path:'artifacts/guild-desktop.png'});
+await page.getByRole('button',{name:'Quiet',exact:true}).click();
+const before=await page.locator('canvas').getAttribute('data-simulation-time');await page.waitForTimeout(500);
+assert.equal(await page.locator('canvas').getAttribute('data-simulation-time'),before);
+await page.getByRole('button',{name:'Credits',exact:true}).click();assert.ok(await page.getByText('A PMD fan project',{exact:true}).isVisible());
+await page.setViewportSize({width:320,height:850});await page.getByRole('button',{name:'Team',exact:true}).click();
+assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+await page.screenshot({path:'artifacts/guild-narrow.png',fullPage:true});
+await page.getByRole('button',{name:'Exit demo'}).click();assert.equal(await page.locator('.team-row').count(),0);
+await page.evaluate(()=>window.postMessage({type:'snapshot',agents:[{id:'codex:fixture',provider:'codex',attached:false,activity:'working',attention:'none',outcome:'',ended:false,lastSeen:Date.now(),tools:{}}],evidence:{'codex:fixture':{source:'transcript',version:'0.162.0',client:'VS Code',partial:true}}},'*'));
+await page.getByRole('button',{name:'Connections',exact:true}).click();
+assert.ok(await page.getByText(/Local transcript.*VS Code 0.162.0.*partial history/).isVisible());
+assert.ok(await page.getByRole('button',{name:'Attach to this window',exact:true}).isVisible());
+assert.equal(await page.locator('canvas').getAttribute('data-actors'),'0');
+assert.deepEqual(errors,[]);
+await browser.close();console.log('Browser checks passed: demo isolation, roster, credits, quiet mode, 320px layout. Screenshots in artifacts/.');
+

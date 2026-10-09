@@ -6,3 +6,4 @@
 - Preserve truthful limitations: generic terminals expose coarse activity; supported integrations expose richer events. Unknown activity must remain unknown.
 - Carry forward fan-project disclaimers, source links and relevant individual credits.
 - Keep ongoing work in Voracity and the portfolio untouched. This planning project is separate.
+- 9 October 2026, follow-up: “Start building it out then” authorizes implementation. Deliver tested increments; the earlier planning-only scope no longer blocks building.

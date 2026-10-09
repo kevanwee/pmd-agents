@@ -1,6 +1,6 @@
 # PMD Agents — product and engineering plan
 
-9 October 2026 · working name `pmd-agents` · proposal, not implemented functionality.
+9 October 2026 · working name `pmd-agents`. Implementation is now authorized; [IMPLEMENTATION.md](IMPLEMENTATION.md) records delivered functionality and evidence. This document remains the roadmap, not a claim that all phases are complete.
 
 The Office is archived. Build a separate VS Code extension that turns the agents working in the current window into an exploration team in a Pokémon Mystery Dungeon world. It should answer three questions at a glance: **Who is working? What are they doing? Who needs me?**
 

@@ -8,3 +8,5 @@ artifacts/
 !.env.example
 *.log
 assets/local/
+media/
+.vscode-test/

@@ -1,0 +1,80 @@
+{
+  "name": "pmd-agents",
+  "type": "module",
+  "displayName": "PMD Agents",
+  "description": "A local Pokemon Mystery Dungeon guild for your coding agents",
+  "version": "0.1.0",
+  "publisher": "kevanwee",
+  "private": true,
+  "license": "SEE LICENSE IN LICENSE",
+  "engines": {
+    "vscode": "^1.109.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Local observation and hook setup require a trusted workspace."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "pmdAgents.open",
+        "title": "PMD Agents: Open Guild"
+      },
+      {
+        "command": "pmdAgents.setup",
+        "title": "PMD Agents: Set Up Provider Hooks"
+      },
+      {
+        "command": "pmdAgents.removeHooks",
+        "title": "PMD Agents: Remove Provider Hooks"
+      }
+    ],
+    "configuration": {
+      "title": "PMD Agents",
+      "properties": {
+        "pmdAgents.assetPath": {
+          "type": "string",
+          "default": "",
+          "description": "Local PMD pack directory containing manifest.json. Game artwork is imported separately."
+        },
+        "pmdAgents.observeLocalChats": {
+          "type": "boolean",
+          "default": true,
+          "description": "Read recent local Codex/Claude activity metadata for workspace chats. Text stays local and is discarded. Sessions require explicit window attachment. Reload after disabling to clear previous observations."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "test:browser": "node tests/browser.mjs",
+    "test:extension": "node tests/run-extension.mjs",
+    "preview": "node scripts/preview.mjs",
+    "import:assets": "python scripts/import-assets.py",
+    "package": "npm run build && vsce package --no-dependencies --allow-missing-repository -o artifacts/pmd-agents-0.1.0.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/vscode": "1.109.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "playwright": "^1.64.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

@@ -2,7 +2,7 @@
 
 Read `docs/PLAN.md`, `docs/RESEARCH.md`, `docs/ATTRIBUTION.md`, and `tasks/lessons.md` first.
 
-- The current authorized deliverable is archive plus planning. The roadmap is not an instruction to implement or publish the entire product.
+- The owner authorized implementation on 9 October 2026. Build and validate usable increments; public publishing is separate. See docs/IMPLEMENTATION.md for actual status and remaining gaps.
 - Keep this separate from Voracity, the portfolio, and the archived The Office repository. Do not overwrite their assets, settings, or work in progress.
 - Use actual PMD sheets and native animation metadata. Keep session status independent of animation.
 - Do not invent provider APIs or report completion based on a timer. Show unsupported, uncertain, disconnected, and ambiguous bindings honestly.

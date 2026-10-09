@@ -1,6 +1,6 @@
 # Attribution and asset handling
 
-This is a release plan and draft notice, not an asset clearance certificate. No game artwork is bundled in this planning repository.
+This is a release plan and draft notice, not an asset clearance certificate. The implementation imports an ignored local artwork pack; game artwork is excluded from Git and the VSIX. Current findings and named contributors are in [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
 ## Draft visible notice
 
