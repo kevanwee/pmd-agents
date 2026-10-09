@@ -1,61 +1,175 @@
 # PMD Agents
 
-A local Pokémon Mystery Dungeon guild for coding agents in VS Code.
+**Your coding agents, as a Pokémon Mystery Dungeon exploration team.**
 
-**Development build 0.1.2 — 10 October 2026.** Real VS Code terminal tracking and live Codex native transcript observation are tested. Claude CLI startup and historical native-chat records are verified; live Claude chat tracking still needs a check.
+PMD Agents is a local VS Code extension inspired by [Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents). Codex chats, Claude Code sessions and terminal jobs appear as Pokémon in a PMD training ground: patrolling while working, practising attacks while editing, and stopping when they need your attention.
 
-## Try it
+[![Checks](https://github.com/kevanwee/pmd-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/kevanwee/pmd-agents/actions/workflows/ci.yml)
+![Development](https://img.shields.io/badge/status-local%20development-e5c77d)
+![VS Code](https://img.shields.io/badge/VS%20Code-1.109%2B-007acc)
 
-The local build is installed. In VS Code, press **Ctrl+Shift+P**, run **Developer: Reload Window**, then **PMD Agents: Open Guild**. To install on another local profile, use **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.1.2.vsix`; import/select the local artwork pack separately.
+> **Development build 0.1.2.** Terminal tracking and live Codex transcript observation are verified locally. Native Claude records have been replayed successfully; live Claude chat tracking still needs validation. This is an unofficial, non-commercial fan project.
 
-- Team shows terminal jobs and attached provider sessions.
-- Activity shows the selected session's last 32 accepted observations, their time and source. Recently closed sessions remain available there. This journal contains event categories only and lasts for the extension activation.
-- Teammates keep their map positions when other sessions join, leave or link. Attention rises to the top of the roster without reshuffling the map; occupied clearings remain reachable as the team shrinks.
-- Connections lists recent workspace chats from supported local client versions. Attach the intended chat; transcript observation is labelled and may be partial. Disable it with `pmdAgents.observeLocalChats`.
-- Connections → Set up observer hooks previews Codex/Claude configuration, preserves existing hooks and backs up changes. Codex requires its own `/hooks` trust review.
-- Native chats without a window token appear as candidates. Attach the intended session explicitly; reattach after reloading the extension.
-- Connections → Manage guild lets you link a terminal-launched agent to its terminal, or remove a session from the guild without stopping it. Native Codex/Claude panel chats should stay separate from unrelated terminals.
-- Working sessions patrol; observed editing attacks a dummy. Thinking/output record metadata refreshes activity without retaining its text. Quiet, reduced motion, approval, stale or unavailable observation stop patrols.
-- Connections → Scan for chats refreshes discovery and shows counts for watched files, unsupported records and read errors. Local discovery normally considers the last 12 hours.
-- Try demo is a clearly labelled visual replay. Quiet pauses movement without hiding status.
+![PMD Agents showing Eevee training, Riolu scouting and Ceruledge waiting for approval in Thunder Meadow](docs/screenshots/guild.png)
 
-Artwork is a separate local pack, excluded from the VSIX. The extension looks in development `assets/local`, then `~/.pmd-agents/assets`. Connections → Choose asset pack accepts the directory containing the generated manifest.
+*Screenshots use explicitly simulated sessions. They demonstrate the UI and animations, not live provider coverage.*
 
-## Build
+## What the guild does
 
-Requires Node.js 22+, npm and VS Code 1.109+. Asset import also needs Python 3 and Pillow.
+- **Observes your existing workflow.** Keep using native Codex and Claude Code chats and VS Code terminals. PMD Agents is an observer, not a replacement chat client.
+- **Uses authentic PMD animations.** Directional sheets, native frame durations, portraits and shadow anchors; no four-frame sprite assumptions.
+- **Makes activity visible.** Working sessions patrol, observed edits trigger dummy attacks, and attention stops movement immediately.
+- **Keeps session identity stable.** Teammates joining or leaving does not reshuffle existing Pokémon. Extra sessions use additional clearings.
+- **Shows its evidence.** An Activity journal lists observed events, timestamps and sources. Missing evidence becomes uncertainty, never invented success.
+- **Lets you choose the team.** Attach ambiguous sessions, assign Eevee/Riolu/Ceruledge, link an agent to its terminal, or remove it from the guild without stopping it.
+- **Stays local.** No hosted backend, additional model calls or paid infrastructure is needed for observation. Existing agent usage keeps its own costs and limits.
+
+## Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/activity.png" alt="Activity journal with simulated editing observations and a PMD portrait card" /></td>
+<td width="50%"><img src="docs/screenshots/credits.png" alt="Credits for the PMD fan project and individual artwork contributors" /></td>
+</tr>
+<tr><td>Observed activity, separated from animation.</td><td>Fan-project notice and individual credits.</td></tr>
+</table>
+
+## Run locally
+
+Requires **Node.js 22+**, npm and **VS Code 1.109+**. Importing artwork also requires Python 3 and Pillow. Windows local is the tested environment; remote hosts are not yet verified.
 
 ```powershell
+git clone https://github.com/kevanwee/pmd-agents.git
+cd pmd-agents
 npm ci
-python -m pip install Pillow
-npm run import:assets
 npm run typecheck
-npm run build
 npm test
-npm run preview
+npm run package
 ```
 
-The importer reads the map/font from sibling Voracity without changing it and downloads pinned sprite sources. For another location: `python scripts/import-assets.py --voracity "path/to/voracity"`.
+In VS Code:
 
-The preview runs at http://127.0.0.1:5188. It starts empty; select Try demo. It is not a live browser monitor.
+1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.1.2.vsix`.
+2. Run **Developer: Reload Window**, then **PMD Agents: Open Guild**.
+3. Choose a local artwork pack under **Connections → Choose asset pack**.
+4. Attach the intended chat under **Connections**. A folder match alone does not prove that a chat belongs to this window.
+
+The extension can observe sessions without artwork; the scene needs a complete local pack. It checks development `assets/local`, then `~/.pmd-agents/assets`, or the configured `pmdAgents.assetPath`.
+
+### Import artwork
+
+Source sheets and game maps are **not included in Git or the VSIX**. The current importer downloads pinned SpriteCollab sheets and reads the Thunder Meadow map and Pixelify Sans font from a local Voracity checkout. Without those local map/font inputs, obtain a compatible pack first; cloning this repository alone does not provide them.
 
 ```powershell
+python -m pip install Pillow
+python scripts/import-assets.py --voracity "path/to/voracity"
+```
+
+The importer writes `assets/local/manifest.json`, original credit records and file hashes. Use `--output` to select another local pack directory. See [asset handling and credits](docs/ATTRIBUTION.md).
+
+### Connect agents
+
+| Source | What works today | Practical limit |
+| --- | --- | --- |
+| Codex native VS Code chat | Live transcript observation verified on 0.162.0-alpha.2; hook adapter available | Explicit attach; native hook/approval coverage still needs validation |
+| Claude native VS Code chat | Actual 2.1.289 records replayed; 2.1.292 schema inspected | A live native chat remains unverified |
+| Claude CLI | Real startup hook received; lifecycle adapter implemented | Full live-turn coverage remains unverified |
+| VS Code terminal | Open/close, shell command start/end and exit result verified | Without shell integration: terminal presence only |
+| Other agent CLIs | Generic terminal activity | Internal reasoning, tools and children require an adapter |
+| WSL, SSH, containers | Observer runs in the workspace extension host | Not tested; local Windows logs are not remote-host logs |
+
+**Connections → Set up observer hooks** previews changes, preserves unrelated hooks, backs up configuration and supports removal. Codex requires its own `/hooks` trust review. PMD Agents never grants provider approvals.
+
+Use **Manage guild** to link a terminal-launched agent to its terminal. Native panel chats should stay separate from unrelated terminals. Attachments and links currently last for the extension activation; reattach after a reload. Character preferences are saved separately.
+
+### Read the world
+
+| Observed state | Pokémon behaviour |
+| --- | --- |
+| Working / thinking / responding | Gentle patrol |
+| Reading or running a command | Short movement circuit |
+| Editing | Attack a training dummy |
+| Approval or input requested | Stop with an attention bubble |
+| Turn finished | Rest, then sleep |
+| Stale, paused or unavailable observation | Stop and show uncertainty |
+
+Quiet and reduced-motion settings stop movement while keeping status visible. “Turn finished” does not mean the requested software is correct or the whole task is complete. A generic command exiting zero is not automatically a test pass.
+
+## How it works
+
+```mermaid
+flowchart LR
+    H[Codex and Claude hooks] --> R[Authenticated local receiver]
+    L[Versioned local transcript reader] --> S[Session and source manager]
+    T[VS Code terminal events] --> S
+    R --> S
+    S --> C[State reducer]
+    C --> J[Bounded activity journal]
+    C --> V[VS Code webview]
+    J --> V
+    A[Separate local artwork pack] --> V
+    V --> W[PMD canvas world and roster]
+```
+
+The host hashes provider identities and discards prompts, arguments, outputs and full paths before sending state to the view. Transcript readers inspect local record structure; raw chat text is neither retained in the journal nor uploaded.
+
+```mermaid
+flowchart TD
+    E[Observed session] --> B{Verified window token?}
+    B -- Yes --> G[Current-window guild]
+    B -- No --> U[Unassigned candidate]
+    U --> A{User attaches session?}
+    A -- Yes --> G
+    A -- No --> U
+    G --> P{Fresh evidence?}
+    P -- Yes --> M[Animate observed activity]
+    P -- No --> Q[Show uncertainty and stop movement]
+    G --> X[Explicit session end]
+    X --> F[Leave scene and retain recent history]
+```
+
+Hooks take priority over transcript replay. After hook silence, a newer live transcript event can recover observation; time alone never produces success. Tool activity is tracked concurrently, with duplicate and late-event protection. A linked terminal closing does not automatically end its provider session.
+
+## Development and verification
+
+```powershell
+npm run typecheck
+npm test
+npm run build
 npx playwright install chromium
 npm run test:browser
 npm run test:extension
 npm run package
 ```
 
-The browser test starts and stops its own preview server on a free local port. The VS Code test uses an isolated profile; set `PMD_VSCODE_EXECUTABLE` for another installation. Neither submits model prompts. Startup-only probes: `npx tsx scripts/probe-clients.ts`.
+- Unit checks cover event ordering, attention, window membership, source recovery, bounded history, stable placement, transport and parsing.
+- The asset integrity test runs when the ignored local pack exists; source-only CI reports it skipped.
+- Browser checks require that pack and start a temporary preview server automatically. They verify motion, attention stops, clearings, journal contents and narrow layouts.
+- VS Code tests launch an isolated profile and exercise real shell integration. Set `PMD_VSCODE_EXECUTABLE` for another installation.
+- `npm run preview` opens a browser demo at `http://127.0.0.1:5188`; it is not a live browser monitor.
+- `npm run screenshots` regenerates the committed, labelled demo screenshots. Real session screenshots, logs and probe exports stay in ignored `artifacts`.
 
-## Documents
+The local build has **32 passing focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
 
-Read `docs/IMPLEMENTATION.md` for actual evidence and gaps, `docs/PLAN.md` for the roadmap, `docs/RESEARCH.md` for the archive/source review, and `docs/ATTRIBUTION.md` for asset terms.
+## Roadmap
 
-The predecessor, [The Office](https://github.com/kevanwee/theoffice), was archived on GitHub at the owner's request. This is a separate project; Voracity supplies visual references and candidate assets.
+- [x] Archive The Office and establish a separate PMD architecture
+- [x] Real PMD scene, native animation metadata, portraits and credits
+- [x] Terminal observation, Codex transcript observation and explicit attachment
+- [x] Activity journal, stable placement, attention and terminal linking
+- [ ] Live Claude native-chat and both providers' approval/subagent validation
+- [ ] Better discovery of resumed, long-running sessions
+- [ ] Window-safe attachment restoration and process reconciliation
+- [ ] More verified Pokémon, maps and optional dungeon presentation
 
-Inspired by [Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents), by Pablo De Lucca and contributors. This implementation does not copy its source code.
+The [full plan](docs/PLAN.md) separates delivered work from future proposals. [Research](docs/RESEARCH.md) records the predecessor review and archive receipt.
 
-Local sprite and portrait credit records include CHUNSOFT, baronessfaron, Fearless-Quit and Top_Kec. Original game sprites and historical fan-art terms are distinguished in the local manifest. Pixelify Sans is by the Pixelify Sans Project Authors under SIL OFL. Thunder Meadow is a local Voracity game-map reference; its original ripper is not verified.
+## Credits and licence
 
-PMD Agents is intended as a non-commercial fan project, unaffiliated with or endorsed by Nintendo, Creatures Inc., GAME FREAK, The Pokémon Company, or Spike Chunsoft. Pokémon and Pokémon Mystery Dungeon names, characters, and game artwork belong to their respective owners. Individual third-party assets retain their own terms; this notice does not grant permission to redistribute them.
+Built by **Kevan Wee**. Inspired by **Pablo De Lucca and the Pixel Agents contributors**; no Pixel Agents source code is copied in this implementation. [The Office](https://github.com/kevanwee/theoffice) is the archived predecessor; Voracity supplied the visual references and local asset-pipeline lessons.
+
+Sprite/portrait records for the initial pack credit **CHUNSOFT, baronessfaron, Fearless-Quit and Top_Kec**, sourced through [PMD SpriteCollab](https://github.com/PMDCollab/SpriteCollab). Original game sprites and individual fan-art terms are distinguished in the pack; a repository-wide fan-art licence is not assumed to cover every asset. **Pixelify Sans Project Authors** provide the font under SIL OFL. Thunder Meadow is a local game-map reference; its original ripper remains unresolved. Screenshots contain rendered third-party artwork and retain those attributions.
+
+Original project code is currently **all rights reserved**; see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md). This repository does not grant redistribution rights to third-party artwork. Source sheets and game maps remain outside the repository and installable package.
+
+**PMD Agents is an unofficial, non-commercial Pokémon Mystery Dungeon fan project.** It is not affiliated with, endorsed by or sponsored by Nintendo, Creatures Inc., GAME FREAK, The Pokémon Company or Spike Chunsoft. Pokémon and Pokémon Mystery Dungeon names, characters and game artwork belong to their respective owners.

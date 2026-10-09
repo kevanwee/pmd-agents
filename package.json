@@ -65,7 +65,8 @@
     "test:extension": "node tests/run-extension.mjs",
     "preview": "node scripts/preview.mjs",
     "import:assets": "python scripts/import-assets.py",
-    "package": "npm run build && vsce package --no-dependencies --allow-missing-repository -o artifacts/pmd-agents-0.1.2.vsix"
+    "package": "npm run build && vsce package --no-dependencies --allow-missing-repository -o artifacts/pmd-agents-0.1.2.vsix",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
@@ -76,5 +77,13 @@
     "playwright": "^1.64.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kevanwee/pmd-agents.git"
+  },
+  "homepage": "https://github.com/kevanwee/pmd-agents#readme",
+  "bugs": {
+    "url": "https://github.com/kevanwee/pmd-agents/issues"
   }
 }

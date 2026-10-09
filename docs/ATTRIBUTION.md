@@ -2,6 +2,8 @@
 
 This is a release plan and draft notice, not an asset clearance certificate. The implementation imports an ignored local artwork pack; game artwork is excluded from Git and the VSIX. Current findings and named contributors are in [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
+The owner requested GitHub publication with screenshots on 10 October 2026. Curated screenshots in `docs/screenshots` show labelled demo sessions and contain rendered third-party artwork; they retain the credits below. Source artwork files remain excluded. Private session screenshots and probe exports remain in ignored `artifacts`.
+
 ## Draft visible notice
 
 > PMD Agents is a non-commercial Pokémon Mystery Dungeon fan project. It is not affiliated with, endorsed by, or sponsored by Nintendo, Creatures Inc., GAME FREAK, The Pokémon Company, or Spike Chunsoft. Pokémon and Pokémon Mystery Dungeon names, characters, and game artwork belong to their respective owners.
