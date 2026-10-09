@@ -1,12 +1,14 @@
 import type {Evidence} from '../transcripts';
 import {GuildStore,status,type Agent,type Event} from '../core';
 import {frameAt,slots,clearPath,facing,type Pack,type Species,type Point} from '../world';
-declare global {interface Window {PMD_BOOT:{pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
+declare global {interface Window {PMD_BOOT:{pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];links?:Record<string,string>;diagnostics?:{files:number;unsupported:number;readErrors:number;lastScan:number};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
 const host=window.acquireVsCodeApi?.();
 const boot=window.PMD_BOOT;
 const pack=boot.pack;
 let agents=boot.agents||[],assignments=boot.assignments||{},terminalNames=boot.terminalNames||{};
 let evidence=boot.evidence||{};
+let links=boot.links||{},diagnostics=boot.diagnostics,observationEnabled=boot.observationEnabled;
+const displayStatus=(a:Agent)=>!demo&&evidence[a.id]?.connection==='paused'?'Observation paused':!demo&&evidence[a.id]?.connection==='unavailable'?'Observation unavailable':status(a);
 const sourceLabel=(a:Agent)=>{const e=evidence[a.id];return e?.source==='transcript'?'Local transcript · '+(e.client||'client')+' '+(e.version||'')+(e.partial?' · partial history':''):e?.source==='hook'?'Observer hook':'Shell integration';};
 let selected='',demo=false,quiet=host?.getState()?.quiet??false,visible=true,area=0;
 let tab:'team'|'connections'|'credits'='team';
@@ -28,11 +30,11 @@ const img=(file:string)=>{
  if(!imageCache.has(file)){const el=new Image();el.onload=()=>{draw(0);};el.onerror=()=>{failedImages.add(file);render();};el.src=boot.assetBase+file;imageCache.set(file,el);}
  const el=imageCache.get(file)!;return el.complete&&el.naturalWidth?el:undefined;
 };
-const button=(text:string,action:()=>void,className='')=>{const b=document.createElement('button');b.textContent=text;b.className=className;b.onclick=action;return b;};
+const button=(text:string,action:()=>void,className='')=>{const b=document.createElement('button');b.textContent=text;b.className=className;b.dataset.focusKey=className+':'+text;b.onclick=action;return b;};
 const node=(tag:string,text:string,className='')=>{const el=document.createElement(tag);el.textContent=text;el.className=className;return el;};
 const species=(a:Agent):Species|undefined=>pack?.sprites.find(s=>s.id===assignments[a.id])||pack?.sprites[[...a.id].reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,0)%pack.sprites.length];
 const label=(a:Agent)=>a.provider==='terminal'?(terminalNames[a.id]||'Terminal'):a.provider==='codex'?'Codex':'Claude Code';
-const shown=()=>agents.filter(a=>a.attached&&!a.ended);
+const shown=()=>{const linked=new Set(demo?[]:Object.entries(links).filter(([id])=>agents.some(a=>a.id===id&&a.attached&&!a.ended)).map(([,terminal])=>terminal));return agents.filter(a=>a.attached&&!a.ended&&!linked.has(a.id));};
 function ensureActors(){
  const ids=new Set(shown().map(a=>a.id));for(const id of actors.keys())if(!ids.has(id))actors.delete(id);
  for(const [n,a] of shown().entries()){
@@ -40,9 +42,13 @@ function ensureActors(){
   if(!old||old.slot!==n)actors.set(a.id,{p:{...p},target:{...p},slot:n,direction:old?.direction||0,elapsed:old?.elapsed||0,rest:0});
  }
 }
-function focusLabel(a:Agent){return a.provider==='terminal'?'Focus terminal':'Open '+label(a)+' panel';}
+function focusLabel(a:Agent){return a.provider==='terminal'||links[a.id]?'Focus terminal':'Open '+label(a)+' panel';}
 function render() {
  ensureActors();
+ // Keep a native select open while asynchronous activity arrives.
+ if(document.activeElement instanceof HTMLSelectElement&&app.contains(document.activeElement))return;
+ const focusKey=(document.activeElement as HTMLElement)?.dataset?.focusKey;
+ const scrollTop=sidebar.scrollTop;
  const team=shown(),candidates=agents.filter(a=>!a.attached&&!a.ended);
  if(!team.some(a=>a.id===selected))selected=team[0]?.id||'';
  app.querySelector('#mode')!.textContent=demo?'DEMO · simulated sessions':'Current window';
@@ -66,12 +72,13 @@ function render() {
   const sp=species(a);if(sp){const portrait=document.createElement('img');portrait.src=boot.assetBase+sp.portrait;portrait.alt=sp.name;portrait.className='portrait';details.append(portrait);}
   const body=node('div','','dialogue-body');
   body.append(node('div',label(a)+(sp?' · '+sp.name:''),'speaker'));
-  body.append(node('h3',status(a)));
-  body.append(node('p',demo?'Simulated activity':sourceLabel(a)+' · last seen '+new Date(a.lastSeen).toLocaleTimeString()));
+  body.append(node('h3',displayStatus(a)));
+  body.append(node('p',demo?'Simulated activity':sourceLabel(a)+' · last seen '+new Date(a.lastSeen).toLocaleTimeString()+(links[a.id]?' · linked to '+(terminalNames[links[a.id]]||'terminal'):'')));
   details.append(body);
   const actions=node('div','','detail-actions');
   if(!demo)actions.append(button(focusLabel(a),()=>send({type:'focus',id:a.id}),'primary'));
-  if(pack){const select=document.createElement('select');select.setAttribute('aria-label','Pokémon for selected session');
+  if(!demo)actions.append(button('Manage session',()=>{tab='connections';render();}));
+  if(pack){const select=document.createElement('select');select.dataset.focusKey='species:'+a.id;select.setAttribute('aria-label','Pokémon for selected session');
    for(const s of pack.sprites){const o=document.createElement('option');o.value=s.id;o.textContent=s.name;select.append(o);}
    select.value=sp!.id;select.onchange=()=>{assignments[a.id]=select.value;if(!demo)send({type:'character',id:a.id,species:select.value});render();};actions.append(select);}
   details.append(actions);
@@ -84,9 +91,10 @@ function render() {
   for(const member of team){
    const sp=species(member);
    const row=button('',()=>{selected=member.id;area=Math.floor(team.findIndex(a=>a.id===member.id)/slots.length);render();},'team-row');
+   row.dataset.focusKey='team:'+member.id;
    row.setAttribute('aria-pressed',String(selected===member.id));
    if(sp){const portrait=document.createElement('img');portrait.src=boot.assetBase+sp.portrait;portrait.alt='';row.append(portrait);}
-   const text=node('div','','team-text');text.append(node('strong',sp?.name||label(member)),node('span',label(member),'provider'),node('span',status(member),'state'));row.append(text);
+   const text=node('div','','team-text');text.append(node('strong',sp?.name||label(member)),node('span',label(member)+(links[member.id]?' · linked terminal':''),'provider'),node('span',displayStatus(member),'state'));row.append(text);
    if(member.attention!=='none')row.append(node('span',member.attention==='input'?'?':'!','attention'));
    sidebar.append(row);
   }
@@ -97,10 +105,28 @@ function render() {
   sidebar.append(button('Set up observer hooks',()=>send({type:'setup'}),'primary'));
   sidebar.append(node('p','Hooks provide stronger lifecycle and approval signals. Codex hooks must be trusted in Codex. PMD Agents never answers approval prompts.','muted'));
   for(const c of boot.clients||[])sidebar.append(node('p',(c.id==='openai.chatgpt'?'Codex':'Claude Code')+' · '+c.version,'client-version'));
+  if(!demo){
+   sidebar.append(node('h3','Local observation'));
+   sidebar.append(node('p',observationEnabled===false?'Local chat observation is disabled in settings.':diagnostics?diagnostics.files+' chat files watched · '+diagnostics.unsupported+' unsupported · '+diagnostics.readErrors+' read errors':'Waiting for local discovery.','muted'));
+   if(diagnostics?.lastScan)sidebar.append(node('p','Last scan '+new Date(diagnostics.lastScan).toLocaleTimeString(),'client-version'));
+   const scan=button('Scan for chats',()=>send({type:'rescan'}));scan.disabled=observationEnabled===false;sidebar.append(scan);
+   sidebar.append(node('h3','Manage guild'));
+   sidebar.append(node('p','Link an agent to the terminal that runs it to use one Pokémon. Removing a session only removes it from this guild.','muted'));
+   for(const member of agents.filter(a=>a.attached&&!a.ended)){
+    const card=node('div','','candidate');card.append(node('strong',label(member)+' · '+member.id.slice(-6)));
+    if(member.provider!=='terminal'){
+     const select=document.createElement('select');select.dataset.focusKey='terminal:'+member.id;select.setAttribute('aria-label','Terminal for '+label(member)+' '+member.id.slice(-6));
+     const none=document.createElement('option');none.value='';none.textContent='Separate / native chat';select.append(none);
+     for(const t of agents.filter(a=>a.provider==='terminal'&&a.attached&&!a.ended)){const o=document.createElement('option');o.value=t.id;o.textContent=terminalNames[t.id]||'Terminal';select.append(o);}
+     select.value=links[member.id]||'';select.onchange=()=>send({type:'link',id:member.id,terminal:select.value});card.append(select);
+    }
+    const remove=button('Remove from guild',()=>send({type:'detach',id:member.id}));remove.dataset.focusKey='remove:'+member.id;card.append(remove);sidebar.append(card);
+   }
+  }
   sidebar.append(node('h3','Available sessions'));
   sidebar.append(node('p','Choose which unassigned sessions belong to this window. Folder matches alone are not used to attach.','muted'));
   if(!candidates.length)sidebar.append(node('p','No unassigned events received yet.','muted'));
-  for(const c of candidates){const card=node('div','','candidate');card.append(node('strong',label(c)+' · '+c.id.slice(-6)),node('p',status(c)+' · '+new Date(c.lastSeen).toLocaleTimeString()),node('p',sourceLabel(c)+(evidence[c.id]?.project?' · '+evidence[c.id].project:''),'muted'),button('Attach to this window',()=>send({type:'attach',id:c.id})));sidebar.append(card);}
+  for(const c of candidates){const card=node('div','','candidate');card.append(node('strong',label(c)+' · '+c.id.slice(-6)),node('p',displayStatus(c)+' · '+new Date(c.lastSeen).toLocaleTimeString()),node('p',sourceLabel(c)+(evidence[c.id]?.project?' · '+evidence[c.id].project:''),'muted'),button('Attach to this window',()=>send({type:'attach',id:c.id})));sidebar.append(card);}
   sidebar.append(button('Choose asset pack',()=>send({type:'assets'})));
  }else{
   sidebar.append(node('div','CREDITS & SOURCES','section-label'),node('h3','A PMD fan project'));
@@ -113,6 +139,8 @@ function render() {
  }
  const live=team.filter(a=>a.attention!=='none').length;
  app.querySelector('#live-status')!.textContent=live?live+' session'+(live===1?'':'s')+' need attention':'';
+ sidebar.scrollTop=scrollTop;
+ if(focusKey)app.querySelector<HTMLElement>('[data-focus-key="'+CSS.escape(focusKey)+'"]')?.focus({preventScroll:true});
  draw(0);
 }
 function dummy(p:Point,hit:boolean) {
@@ -123,6 +151,7 @@ function dummy(p:Point,hit:boolean) {
  if(hit){ctx.fillStyle='#fff4be';ctx.fillRect(p.x-10,p.y-31,2,3);ctx.fillRect(p.x+10,p.y-25,3,2);}
 }
 function draw(delta:number){
+ ensureActors();
  drawCount++;
  const box=canvas.getBoundingClientRect(),dpr=devicePixelRatio||1;
  if(!box.width||!box.height)return;
@@ -141,15 +170,15 @@ function draw(delta:number){
   const actor=actors.get(a.id)!;
   const sp=species(a);if(!sp)continue;
   actor.elapsed+=still?0:delta;
-  const uncertain=status(a)==='Status unconfirmed',attention=a.attention!=='none'||uncertain;
-  const canMove=!still&&!attention&&(a.activity==='reading'||a.activity==='running');
+  const uncertain=['Status unconfirmed','Observation unavailable','Observation paused'].includes(displayStatus(a)),attention=a.attention!=='none'||uncertain;
+  const canMove=!still&&!attention&&['working','reading','running'].includes(a.activity);
   const home=slots[actor.slot%slots.length];
   if(canMove){
    if(Math.hypot(actor.p.x-actor.target.x,actor.p.y-actor.target.y)<1){
     actor.rest+=delta;
-    if(actor.rest>1800){
+    if(actor.rest>650){
      const phase=Math.floor(actor.elapsed/2400)%2;
-     const target={x:home.x+(phase?10:-10),y:home.y+(phase?-5:5)};
+     const target={x:home.x+(phase?14:-14),y:home.y+(phase?-6:6)};
      actor.target=clearPath(actor.p,target)?target:{...home};actor.rest=0;
     }
    }else{
@@ -162,11 +191,11 @@ function draw(delta:number){
  }
  for(const a of [...list].sort((a,b)=>actors.get(a.id)!.p.y-actors.get(b.id)!.p.y)){
   const actor=actors.get(a.id)!,sp=species(a);if(!sp)continue;
-  const uncertain=status(a)==='Status unconfirmed',attention=a.attention!=='none'||uncertain;
+  const uncertain=['Status unconfirmed','Observation unavailable','Observation paused'].includes(displayStatus(a)),attention=a.attention!=='none'||uncertain;
   const editing=a.activity==='editing'&&!attention;
   const attack=sp.animations.Attack,cycle=actor.elapsed%1800;
   const attacking=editing&&!still&&cycle<attack.durations.reduce((x,y)=>x+y,0)*1000/60;
-  let action=attacking?'Attack':!still&&!attention&&(a.activity==='reading'||a.activity==='running')?'Walk':a.activity==='idle'&&!attention&&now-a.lastSeen>30000?'Sleep':'Idle';
+  let action=attacking?'Attack':!still&&!attention&&['working','reading','running'].includes(a.activity)?'Walk':a.activity==='idle'&&!attention&&now-a.lastSeen>30000?'Sleep':'Idle';
   const anim=sp.animations[action],f=still?0:frameAt(anim,attacking?cycle:actor.elapsed),row=anim.rows===1?0:actor.direction;
   const sheet=img(anim.file);
   if(editing)dummy({x:actor.p.x+23,y:actor.p.y},attacking&&f===attack.hit);
@@ -182,11 +211,13 @@ function draw(delta:number){
  canvas.dataset.drawCount=String(drawCount);
  canvas.dataset.simulationTime=String([...actors.values()].reduce((sum,a)=>sum+a.elapsed,0));
  canvas.dataset.actors=String(list.length);
+ canvas.dataset.positions=JSON.stringify(list.map(a=>{const p=actors.get(a.id)!.p;return {id:a.id,x:Math.round(p.x),y:Math.round(p.y)};}));
 }
 function loop(time:number){frame=0;if(!visible||document.hidden||quiet||reduced.matches)return;draw(Math.min(50,last?time-last:0));last=time;frame=requestAnimationFrame(loop);}
 function restart(){cancelAnimationFrame(frame);frame=0;last=0;draw(0);if(visible&&!document.hidden&&!quiet&&!reduced.matches)frame=requestAnimationFrame(loop);}
 new ResizeObserver(()=>draw(0)).observe(canvas);
 document.addEventListener('visibilitychange',restart);reduced.addEventListener('change',restart);
+app.addEventListener('focusout',e=>{if(e.target instanceof HTMLSelectElement)setTimeout(render,0);});
 app.querySelector('#quiet')!.addEventListener('click',()=>{quiet=!quiet;host?.setState({quiet});render();restart();});
 app.querySelector('#area')!.addEventListener('click',()=>{area=(area+1)%Math.max(1,Math.ceil(shown().length/slots.length));render();});
 app.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>{tab=el.getAttribute('data-tab') as typeof tab;render();}));
@@ -209,7 +240,7 @@ app.querySelector('#demo')!.addEventListener('click',()=>{
 });
 window.addEventListener('message',event=>{
  const m=event.data;
- if(m.type==='snapshot'){if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};evidence=m.evidence||{};render();}
+ if(m.type==='snapshot'){links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
  if(m.type==='visibility'){visible=m.visible;restart();}
 });
 canvas.addEventListener('click',event=>{

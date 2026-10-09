@@ -2,16 +2,19 @@
 
 A local Pokémon Mystery Dungeon guild for coding agents in VS Code.
 
-**Development build 0.1.0 — 9 October 2026.** Real VS Code terminal tracking and live Codex native transcript observation are tested. Claude CLI startup emitted a hook event; native Claude chat tracking still needs a live check.
+**Development build 0.1.1 — 10 October 2026.** Real VS Code terminal tracking and live Codex native transcript observation are tested. Claude CLI startup and historical native-chat records are verified; live Claude chat tracking still needs a check.
 
 ## Try it
 
-Install `artifacts/pmd-agents-0.1.0.vsix` and run **PMD Agents: Open Guild** from the Command Palette.
+The local build is installed. In VS Code, press **Ctrl+Shift+P**, run **Developer: Reload Window**, then **PMD Agents: Open Guild**. To install on another local profile, use **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.1.1.vsix`; import/select the local artwork pack separately.
 
 - Team shows terminal jobs and attached provider sessions.
 - Connections lists recent workspace chats from supported local client versions. Attach the intended chat; transcript observation is labelled and may be partial. Disable it with `pmdAgents.observeLocalChats`.
 - Connections → Set up observer hooks previews Codex/Claude configuration, preserves existing hooks and backs up changes. Codex requires its own `/hooks` trust review.
 - Native chats without a window token appear as candidates. Attach the intended session explicitly; reattach after reloading the extension.
+- Connections → Manage guild lets you link a terminal-launched agent to its terminal, or remove a session from the guild without stopping it. Native Codex/Claude panel chats should stay separate from unrelated terminals.
+- Working sessions patrol; observed editing attacks a dummy. Thinking/output record metadata refreshes activity without retaining its text. Quiet, reduced motion, approval, stale or unavailable observation stop patrols.
+- Connections → Scan for chats refreshes discovery and shows counts for watched files, unsupported records and read errors. Local discovery normally considers the last 12 hours.
 - Try demo is a clearly labelled visual replay. Quiet pauses movement without hiding status.
 
 Artwork is a separate local pack, excluded from the VSIX. The extension looks in development `assets/local`, then `~/.pmd-agents/assets`. Connections → Choose asset pack accepts the directory containing the generated manifest.

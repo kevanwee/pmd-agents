@@ -7,3 +7,4 @@
 - Carry forward fan-project disclaimers, source links and relevant individual credits.
 - Keep ongoing work in Voracity and the portfolio untouched. This planning project is separate.
 - 9 October 2026, follow-up: “Start building it out then” authorizes implementation. Deliver tested increments; the earlier planning-only scope no longer blocks building.
+- 10 October 2026: The owner sees Eevee standing still during Codex thinking/output. Active work must produce visible, restrained movement even when tool semantics are unavailable; do not leave generic Working in a nearly static idle pose. Keep attention and quiet modes still.

@@ -1,6 +1,16 @@
-# First guild implementation — 9 October 2026
+# Guild implementation — updated 10 October 2026
 
 The owner authorized building after the planning pass. This branch delivers a first usable slice, not the entire roadmap.
+
+## 0.1.1: visible work and session management
+
+The owner reported Eevee standing still while Codex was thinking/outputting. Generic Working now follows a short checked patrol using Walk frames. Explicit editing retains dummy attacks; approval/input, unknown stale state, lost observation, Quiet and reduced motion stop movement. Native reasoning/assistant record metadata produces a `pulse` that refreshes observed activity without inspecting or retaining text, clearing attention, or claiming completion.
+
+Connections now supports explicit agent-to-terminal links, unlinking, removing a session from the guild and rescanning. A linked terminal is represented by its agent in the map; both identities remain intact. Several agents can share an explicitly linked terminal. Closing a terminal removes the link without declaring the provider session ended. Removal persists for this activation even when direct hooks arrive; reattachment is deliberate. Links are activation-local and must be restored after reload.
+
+Source switching lives in `src/sessions.ts`. Hook events take priority over transcript replay. If hooks have been quiet for two minutes, a fresh transcript event newer than the last hook can recover observation; elapsed time alone never changes the outcome. Switching sources clears incomplete tool bookkeeping and labels fallback history partial. Missing/read-failed files show Observation unavailable; disabling observation immediately shows Observation paused. Reappearance revalidates workspace/client metadata. The scan reports watched-file, unsupported and error counts. Claude's `CLAUDE_CONFIG_DIR` is honored.
+
+Validation: 26 tests, TypeScript, browser checks including actual patrol displacement/approval stop, link visibility, narrow management controls, and a real VS Code terminal/link lifecycle test. A historical replay of two actual native Claude 2.1.289 files produced 87 tool starts, 88 tool ends and 15 turn finishes from bounded tails. These files were approximately 49 and 72 hours old, so they are deliberately excluded from automatic live discovery. This proves decoding of actual native records, not a live Claude session. The sanitized replay report stays in ignored artifacts.
 
 ## Implemented
 
@@ -21,7 +31,7 @@ This slice uses TypeScript, DOM controls and Canvas, with esbuild. React/Vite fr
 | VS Code terminal | Real Extension Development Host: terminal open, shell integration command, exit and close; webview JavaScript ready handshake | Verified locally |
 | Claude CLI startup | Installed CLI emitted SessionStart through a temporary observer configuration before rejecting empty print input; no inference submitted | Startup verified; live turns unverified |
 | Codex app-server startup | Installed binary initialized and accepted thread/start with isolated CODEX_HOME; no hook event observed; no inference submitted | Startup protocol verified; observation unproven |
-| Claude native VS Code chat | Locally inspected 2.1.289/2.1.292 schemas; synthetic turn/tool fixtures pass; no native chat turn exercised | Parser tested; live connection unverified |
+| Claude native VS Code chat | Actual 2.1.289 records replayed through parser; 2.1.292 schema inspected; synthetic turn/tool fixtures pass | Historical records verified; live connection unverified |
 | Codex native VS Code chat | Read actual 0.162.0-alpha.2 session transcript; 2 new events written during a 15-second probe, no read errors | Native transcript observation verified; hooks/approval coverage unverified |
 | Two windows | Two actual receivers and observer subprocesses: bound event reaches one; unbound event remains a candidate in both | Routing verified; two full interactive editor windows still need live testing |
 | Other/nested tools | Terminal observes coarse shell activity; semantic detail needs hooks | Limited |
@@ -37,7 +47,7 @@ The receiver binds loopback, authenticates with a random token, rejects browser 
 
 Manual attachment is activation-local: VS Code workspaceState can be shared by windows on the same folder, so restoring attachments from it risks cross-window binding. Reattach unbound chats after reload. Cosmetic character choices are saved per workspace/provider-session ID. Generic terminal identity lasts for the activation.
 
-The store is capped at 128 sessions and bounded event/tombstone sets. Full process reconciliation and reconnect recovery remain future work. Some provider events lack turn IDs, limiting perfect ordering across turns. Child activity without a child ID cannot be assigned merely from timing. A provider session and its terminal may both appear until explicit grouping is implemented.
+The store is capped at 128 sessions and bounded event/tombstone sets. Full process reconciliation and attachment restoration across extension reload remain future work. Some provider events lack turn IDs, limiting perfect ordering across turns. Child activity without a child ID cannot be assigned merely from timing. Agent/terminal grouping is explicit; no ownership is guessed from folder or timing.
 
 Source navigation opens a terminal or the provider's panel. Exact native-chat conversation focus is not claimed. Hook installation is offered through the extension; trust is never silently granted.
 
@@ -47,7 +57,7 @@ Source navigation opens a terminal or the provider's panel. Exact native-chat co
 
 Discovery checks the last three UTC Codex date directories and each workspace's Claude project directory. It considers files modified within 12 hours, scans at most 64 recent candidates and tracks at most 16 matching sessions. Each initial read and polling read is capped at 1 MiB; partial history is labelled. Byte offsets remain stable across split UTF-8 reads; truncation resets parsing. Unsupported versions are skipped. Tested/inspected version families: Codex 0.153/0.159/0.162, Claude 2.1.289/2.1.292. These local formats are private and may change.
 
-Native sessions always start unbound; directory equality does not establish window ownership. The first non-startup hook event takes authority for that session for this activation, preventing transcript replay from fighting hook state. A hook that subsequently disappears produces stale status, not fabricated completion. Transcript-only observation does not prove approval waits, child identities or exact-chat focus. Remote hosts require logs in that extension host's filesystem.
+Native sessions always start unbound; directory equality does not establish window ownership. Non-startup hooks take priority; fresh transcript recovery after hook silence is described above. A missing hook with no newer evidence produces stale status, not fabricated completion. Transcript-only observation does not prove approval waits, child identities or exact-chat focus. Remote hosts require logs in that extension host's filesystem.
 
 The sanitized `artifacts/transcript-probe.json` records 29 tool starts, 28 tool ends, one failure and one new turn from a local Codex VS Code session, including two events written during the probe. It contains no chat text or paths. Run `npx tsx scripts/probe-transcripts.ts <workspace-directory>` to repeat.
 
@@ -64,7 +74,7 @@ The tree is conservatively blocked; no foreground mask is fabricated. Training d
 ## Validation
 
 - TypeScript typecheck and production bundles.
-- Eighteen focused tests: concurrent/reordered events, attention, stale state, redaction, child identity, wire validation, hook merge/removal, geometry, animation timing, asset hashes, two-receiver routing, native transcript reconstruction, version/workspace gates and split UTF-8/truncation handling.
+- Twenty-six focused tests: concurrent/reordered events, attention, generation pulses, stale state, redaction, child identity, wire validation, hook merge/removal, geometry, animation timing, asset hashes, two-receiver routing, native transcript reconstruction, version/workspace gates, split UTF-8/truncation handling, source recovery and session membership/linking.
 - Playwright: demo isolation, roster, credits, paused simulation and 320px layout; desktop and narrow screenshots visually inspected.
 - Real VS Code: terminal lifecycle, shell command, webview ready and unbound hook candidate.
 - Actual CLI startup probes described above.
@@ -73,4 +83,4 @@ Screenshots, probe state and logs stay in ignored `artifacts`. No paid service, 
 
 ## Next increment
 
-Exercise native Claude chat tracking and both clients after hook setup/trust, including tool actions, attention and child agents. Capture redacted fixtures, establish client-specific limits, then implement identity grouping and lifecycle recovery before expanding maps.
+Exercise live native Claude chat and both clients after hook setup/trust, including approval/input and child agents. Establish durable window identity for attachment restoration and improve process reconciliation before expanding maps.

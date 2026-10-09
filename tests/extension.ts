@@ -22,8 +22,15 @@ export async function run(){
   const r=api.registration;
   const response=await fetch('http://127.0.0.1:'+r.port+'/event',{method:'POST',headers:{Authorization:'Bearer '+r.token},body:JSON.stringify({window:null,event:{v:1,id:'probe',session:'codex:probe',provider:'codex',kind:'session',at:Date.now()}})});
   assert.equal(response.status,204);assert.equal(api.snapshot().find((a:any)=>a.id==='codex:probe').attached,false);
+  api.sessions.attach('codex:probe');
+  const terminal=api.snapshot().find((a:any)=>a.provider==='terminal'&&!a.ended);
+  assert.equal(api.sessions.link('codex:probe',terminal.id),true);
+  api.sessions.detach('codex:probe');assert.equal(api.sessions.links.size,0);
+  assert.equal(api.snapshot().find((a:any)=>a.id==='codex:probe').ended,false);
+  api.sessions.attach('codex:probe');assert.equal(api.sessions.link('codex:probe',terminal.id),true);
  }finally{t.dispose();}
  await new Promise(r=>setTimeout(r,400));
  assert.ok(api.snapshot().some((a:any)=>a.provider==='terminal'&&a.ended));
+ assert.equal(api.sessions.links.size,0);assert.equal(api.snapshot().find((a:any)=>a.id==='codex:probe').ended,false);
  console.log('PMD extension: real terminal lifecycle, shell command, webview and candidate routing passed.');
 }

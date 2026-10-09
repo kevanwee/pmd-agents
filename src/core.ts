@@ -1,6 +1,6 @@
 export type Provider = 'codex' | 'claude' | 'terminal';
 export type Activity = 'idle' | 'working' | 'reading' | 'editing' | 'running';
-export type Kind = 'session' | 'turn' | 'tool-start' | 'tool-end' | 'approval' | 'input' | 'finish' | 'failure' | 'interrupt' | 'end';
+export type Kind = 'session' | 'turn' | 'pulse' | 'tool-start' | 'tool-end' | 'approval' | 'input' | 'finish' | 'failure' | 'interrupt' | 'end';
 export interface Event {
  v:1; id:string; session:string; provider:Provider; kind:Kind; at:number;
  tool?:string; turn?:string; parent?:string; activity?:Activity;
@@ -11,7 +11,7 @@ export interface Agent {
  attentionTool?:string;
  ended:boolean; lastSeen:number; tools:Record<string,Activity>; turn?:string;
 }
-const kinds:Kind[]=['session','turn','tool-start','tool-end','approval','input','finish','failure','interrupt','end'];
+const kinds:Kind[]=['session','turn','pulse','tool-start','tool-end','approval','input','finish','failure','interrupt','end'];
 export function validEvent(x:unknown):x is Event {
  if(!x || typeof x!=='object') return false;
  const e=x as Event;
@@ -29,6 +29,7 @@ export class GuildStore {
  private seen=new Set<string>();
  private done=new Set<string>();
  private settled=new Set<string>();
+ hasSeen(id:string){return this.seen.has(id);}
  apply(e:Event,attached=false) {
   if(this.seen.has(e.id)) return;
   this.seen.add(e.id); if(this.seen.size>4096) this.seen.delete(this.seen.values().next().value!);
@@ -52,7 +53,8 @@ export class GuildStore {
   const key=turnKey+':'+e.tool;
   switch(e.kind) {
    case 'session': break;
-   case 'turn': a.activity='working';a.attention='none';a.attentionTool=undefined;a.outcome='';break;
+   case 'pulse': if(a.activity==='idle'&&!a.outcome)a.activity='working';break;
+   case 'turn': a.tools={};a.activity='working';a.attention='none';a.attentionTool=undefined;a.outcome='';break;
    case 'tool-start':
     if(!this.done.has(key)) {a.tools[e.tool!]=e.activity||'working';if(!a.attentionTool||a.attentionTool===e.tool){a.attention='none';a.attentionTool=undefined;}a.outcome='';}
     a.activity=this.activity(a);break;
@@ -74,6 +76,12 @@ export class GuildStore {
   return values.includes('editing')?'editing':values.includes('running')?'running':values.includes('reading')?'reading':'working';
  }
  attach(id:string) {const a=this.agents.get(id);if(a)a.attached=true;}
+ detach(id:string) {const a=this.agents.get(id);if(a)a.attached=false;}
+ resetObservation(id:string) {
+  const a=this.agents.get(id);if(!a||a.ended)return;
+  a.tools={};a.turn=undefined;a.attention='none';a.attentionTool=undefined;a.outcome='';a.activity='idle';
+  for(const set of [this.done,this.settled])for(const key of set)if(key.startsWith(id+':'))set.delete(key);
+ }
  snapshot(){return [...this.agents.values()].map(a=>({...a,tools:{...a.tools}}));}
 }
 export function status(a:Agent,now=Date.now()) {

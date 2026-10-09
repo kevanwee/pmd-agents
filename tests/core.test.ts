@@ -38,6 +38,11 @@ test('late events cannot revive a closed session',()=>{
  const s=new GuildStore();s.apply(event('end'));s.apply(event('tool-start',{tool:'a'}));
  assert.equal(status(s.snapshot()[0]),'Session closed');
 });
+test('observed generation refreshes activity without dismissing attention or inventing completion',()=>{
+ const s=new GuildStore();s.apply(event('pulse'));assert.equal(s.snapshot()[0].activity,'working');
+ s.apply(event('input'));s.apply(event('pulse'));assert.equal(s.snapshot()[0].attention,'input');assert.equal(s.snapshot()[0].outcome,'');
+ s.apply(event('finish'));s.apply(event('pulse'));assert.equal(s.snapshot()[0].activity,'idle');assert.equal(s.snapshot()[0].outcome,'finished');
+});
 test('hook normalization drops raw prompts, paths, arguments and outputs',()=>{
  const a=normalize('codex',{session_id:'private-session',hook_event_name:'PreToolUse',tool_name:'apply_patch',tool_use_id:'tool-a',turn_id:'turn-a',tool_input:{command:'secret'},cwd:'private-folder',prompt:'private-prompt'});
  assert.ok(a);assert.equal(a.activity,'editing');assert.ok(validEvent(a));

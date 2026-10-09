@@ -23,5 +23,25 @@ await page.getByRole('button',{name:'Connections',exact:true}).click();
 assert.ok(await page.getByText(/Local transcript.*VS Code 0.162.0.*partial history/).isVisible());
 assert.ok(await page.getByRole('button',{name:'Attach to this window',exact:true}).isVisible());
 assert.equal(await page.locator('canvas').getAttribute('data-actors'),'0');
+// The reported regression: an active Codex chat must visibly move, including
+// generic thinking/output where no specific tool classification is available.
+const snapshot={type:'snapshot',agents:[{id:'codex:fixture',provider:'codex',attached:true,activity:'working',attention:'none',outcome:'',ended:false,lastSeen:Date.now(),tools:{}},{id:'terminal:fixture',provider:'terminal',attached:true,activity:'idle',attention:'none',outcome:'',ended:false,lastSeen:Date.now(),tools:{}}],links:{'codex:fixture':'terminal:fixture'},terminalNames:{'terminal:fixture':'Terminal 1'},assignments:{'codex:fixture':'eevee'},evidence:{'codex:fixture':{source:'transcript',connection:'observing'}}};
+await page.evaluate(s=>window.postMessage(s,'*'),snapshot);
+await page.getByRole('button',{name:'Team',exact:true}).click();
+assert.equal(await page.locator('.team-row').count(),1);
+await page.getByRole('button',{name:'Resume motion',exact:true}).click();
+const initial=await page.locator('canvas').getAttribute('data-positions');
+await page.waitForFunction(p=>document.querySelector('canvas').dataset.positions!==p,initial,{timeout:5000});
+assert.ok(await page.getByRole('button',{name:'Focus terminal',exact:true}).isVisible());
+await page.screenshot({path:'artifacts/guild-working.png',fullPage:true});
+snapshot.agents[0].attention='approval';await page.evaluate(s=>window.postMessage(s,'*'),snapshot);await page.waitForTimeout(100);
+const stopped=await page.locator('canvas').getAttribute('data-positions');await page.waitForTimeout(900);assert.equal(await page.locator('canvas').getAttribute('data-positions'),stopped);
+snapshot.links={};snapshot.evidence['codex:fixture'].connection='unavailable';await page.evaluate(s=>window.postMessage(s,'*'),snapshot);
+await page.waitForFunction(()=>document.querySelectorAll('.team-row').length===2);
+assert.ok(await page.getByRole('heading',{name:'Observation unavailable',exact:true}).isVisible());
+await page.getByRole('button',{name:'Manage session',exact:true}).click();
+assert.equal(await page.getByRole('button',{name:'Remove from guild',exact:true}).count(),2);
+assert.ok(await page.getByRole('combobox',{name:/Terminal for Codex/}).isVisible());
+assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
 assert.deepEqual(errors,[]);
 await browser.close();console.log('Browser checks passed: demo isolation, roster, credits, quiet mode, 320px layout. Screenshots in artifacts/.');

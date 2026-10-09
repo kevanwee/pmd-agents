@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,writeFile,appendFile,rm} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,appendFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {TranscriptParser,JsonlTail,metadata,inWorkspace} from '../src/transcripts';
+import {TranscriptParser,JsonlTail,metadata,inWorkspace,startTranscriptWatcher} from '../src/transcripts';
 import {GuildStore} from '../src/core';
 const meta={provider:'codex' as const,id:'private-session',cwd:process.cwd(),version:'0.162.0-alpha.2',client:'VS Code'};
 test('Codex transcript reconstructs turns without retaining raw content',()=>{
@@ -48,4 +48,25 @@ test('JSONL reader handles split UTF8, stable byte offsets, malformed lines and 
   await appendFile(file,'broken\n{"ok":true}\n');await tail.read();assert.equal(events.length,2);
   await writeFile(file,'{"reset":1}\n');await tail.read();assert.equal(resets,1);assert.equal(events[2].record.reset,1);
  }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('watcher reports loss, revalidates replaced files and recovers without cross-workspace binding',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'pmd-discovery-'));
+ const codexHome=join(dir,'codex'),claudeHome=join(dir,'claude'),date=new Date();
+ const logs=join(codexHome,'sessions',String(date.getUTCFullYear()),String(date.getUTCMonth()+1).padStart(2,'0'),String(date.getUTCDate()).padStart(2,'0'));
+ const records=(id:string,cwd:string)=>[
+  {type:'session_meta',payload:{id,cwd,cli_version:meta.version,source:'vscode'}},
+  {timestamp:new Date().toISOString(),type:'event_msg',payload:{type:'task_started',turn_id:id}},
+ ];
+ const events:any[]=[],states:string[]=[];
+ const watcher=startTranscriptWatcher([dir],e=>events.push(e),{codexHome,claudeHome,poll:false,onState:(_,state)=>states.push(state!)});
+ try{
+  await mkdir(logs,{recursive:true});const file=join(logs,'session.jsonl');
+  await writeFile(file,records('original-session',dir).map(r=>JSON.stringify(r)).join('\n')+'\n');
+  await watcher.rescan();assert.equal(events.length,1);assert.equal(watcher.diagnostics.files,1);
+  await rm(file);await watcher.rescan();assert.equal(states.at(-1),'unavailable');assert.equal(watcher.diagnostics.files,0);
+  await writeFile(file,records('other-session',dir+'-other').map(r=>JSON.stringify(r)).join('\n')+'\n');
+  await watcher.rescan();assert.equal(events.length,1);assert.equal(watcher.diagnostics.files,0);
+  await writeFile(file,records('new-session',dir).map(r=>JSON.stringify(r)).join('\n')+'\n');
+  await watcher.rescan();assert.equal(events.length,2);assert.notEqual(events[0].session,events[1].session);assert.equal(states.at(-1),'observing');
+ }finally{watcher.dispose();await rm(dir,{recursive:true,force:true});}
 });

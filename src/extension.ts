@@ -3,34 +3,31 @@ import {randomUUID} from 'node:crypto';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {existsSync} from 'node:fs';
-import {GuildStore,type Event} from './core';
+import {type Event} from './core';
+import {Sessions} from './sessions';
 import {startReceiver} from './receiver';
 import {setup} from './setup';
 import {loadPack} from './assets';
 import type {Pack} from './world';
 import {startTranscriptWatcher,type Evidence} from './transcripts';
 export async function activate(context:vscode.ExtensionContext) {
- const store=new GuildStore();
+ const sessions=new Sessions(),store=sessions.store;
  let panel:vscode.WebviewPanel|undefined;
  const terminals=new Map<vscode.Terminal,string>();
- const executions=new Map<vscode.TerminalShellExecution,string>();
+ const executions=new Map<vscode.TerminalShellExecution,{tool:string;session:string}>();
  const terminalNames=new Map<string,string>();
+ let terminalSequence=0;
  const assignments={...context.workspaceState.get<Record<string,string>>('characters',{})};
  // VS Code workspaceState can be shared by windows on the same folder. Explicit
  // attachment is activation-local until a durable window identity is available.
- const attachments=new Set<string>();
  let sequence=0;
  let ready=false;
- const evidence=new Map<string,Evidence>(),hookSessions=new Set<string>();
+ const evidence=sessions.evidence;
  let publishTimer:ReturnType<typeof setTimeout>|undefined;
- const snapshot=()=>({type:'snapshot',sequence:++sequence,agents:store.snapshot(),evidence:Object.fromEntries(evidence),terminalNames:Object.fromEntries(terminalNames),assignments});
+ const snapshot=()=>({type:'snapshot',sequence:++sequence,agents:store.snapshot(),links:Object.fromEntries(sessions.links),diagnostics:watcher?.diagnostics,observationEnabled:!!watcher,evidence:Object.fromEntries(evidence),terminalNames:Object.fromEntries(terminalNames),assignments});
  const publish=()=>{if(!publishTimer)publishTimer=setTimeout(()=>{publishTimer=undefined;if(panel)void panel.webview.postMessage(snapshot());},80);};
  const receive=(e:Event,direct:boolean,source:Evidence={source:e.provider==='terminal'?'terminal':'hook'})=>{
-  if(source.source==='transcript'&&hookSessions.has(e.session))return;
-  if(source.source==='hook'&&e.kind!=='session')hookSessions.add(e.session);
-  if(source.source!=='hook'||e.kind!=='session'||!evidence.has(e.session))evidence.set(e.session,source);
-  store.apply(e,direct||attachments.has(e.session)||!!e.parent&&attachments.has(e.parent));
-  for(const id of evidence.keys())if(!store.agents.has(id)){evidence.delete(id);hookSessions.delete(id);}
+  sessions.receive(e,direct,source);
   publish();
  };
  const registry=process.env.PMD_AGENTS_REGISTRY||join(homedir(),'.pmd-agents','instances');
@@ -40,9 +37,10 @@ export async function activate(context:vscode.ExtensionContext) {
  context.subscriptions.push({dispose(){context.environmentVariableCollection.clear();void receiver.dispose();}});
  let watcher:ReturnType<typeof startTranscriptWatcher>|undefined;
  const observe=()=>{
-  watcher?.dispose();watcher=undefined;
+  watcher?.dispose();watcher=undefined;sessions.pauseTranscripts();
   if(vscode.workspace.getConfiguration('pmdAgents').get<boolean>('observeLocalChats',true))
-   watcher=startTranscriptWatcher((vscode.workspace.workspaceFolders||[]).map(f=>f.uri.fsPath),(event,source)=>receive(event,false,source));
+   watcher=startTranscriptWatcher((vscode.workspace.workspaceFolders||[]).map(f=>f.uri.fsPath),(event,source)=>receive(event,false,source),{onState:(id,state)=>{sessions.mark(id,state);publish();},onScan:publish});
+  publish();
  };
  observe();
  context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(observe),vscode.workspace.onDidChangeConfiguration(e=>{if(e.affectsConfiguration('pmdAgents.observeLocalChats'))observe();}),{dispose(){watcher?.dispose();clearTimeout(publishTimer);}});
@@ -51,19 +49,19 @@ export async function activate(context:vscode.ExtensionContext) {
   if(terminals.has(t))return terminals.get(t)!;
   const id='terminal:'+randomUUID();terminals.set(t,id);
   // Terminal titles may contain user paths; display a stable neutral label.
-  terminalNames.set(id,'Terminal '+terminals.size);emit(id,'session');return id;
+  terminalNames.set(id,'Terminal '+(++terminalSequence));emit(id,'session');return id;
  }
  vscode.window.terminals.forEach(addTerminal);
  context.subscriptions.push(
   vscode.window.onDidOpenTerminal(addTerminal),
-  vscode.window.onDidCloseTerminal(t=>{const id=terminals.get(t);if(id){emit(id,'end');terminals.delete(t);terminalNames.delete(id);} }),
+  vscode.window.onDidCloseTerminal(t=>{const id=terminals.get(t);if(id){emit(id,'end');terminals.delete(t);terminalNames.delete(id);for(const [execution,value] of executions)if(value.session===id)executions.delete(execution);} }),
   vscode.window.onDidStartTerminalShellExecution(e=>{
-   const id=addTerminal(e.terminal),tool=randomUUID();executions.set(e.execution,tool);
+   const id=addTerminal(e.terminal),tool=randomUUID();executions.set(e.execution,{tool,session:id});
    emit(id,'turn',{turn:tool});emit(id,'tool-start',{tool,turn:tool,activity:'running'});
   }),
   vscode.window.onDidEndTerminalShellExecution(e=>{
-   const id=addTerminal(e.terminal),tool=executions.get(e.execution);
-   if(!tool)return;executions.delete(e.execution);emit(id,'tool-end',{tool,turn:tool});
+   const id=terminals.get(e.terminal),tool=executions.get(e.execution)?.tool;
+   if(!tool||!id)return;executions.delete(e.execution);emit(id,'tool-end',{tool,turn:tool});
    if(typeof e.exitCode==='number')emit(id,e.exitCode===0?'finish':'failure',{turn:tool});
   })
  );
@@ -92,15 +90,17 @@ export async function activate(context:vscode.ExtensionContext) {
     if(!msg||typeof msg!=='object')return;
     if(msg.type==='ready'){ready=true;publish();}
     if(msg.type==='attach'&&typeof msg.id==='string'&&store.agents.has(msg.id)){
-     attachments.add(msg.id);store.attach(msg.id);
-     for(const a of store.agents.values())if(a.parent===msg.id){attachments.add(a.id);store.attach(a.id);}
+     sessions.attach(msg.id);
      publish();
     }
+    if(msg.type==='detach'&&typeof msg.id==='string'){sessions.detach(msg.id);publish();}
+    if(msg.type==='link'&&typeof msg.id==='string'&&typeof msg.terminal==='string'){sessions.link(msg.id,msg.terminal);publish();}
+    if(msg.type==='rescan')await watcher?.rescan();
     if(msg.type==='character'&&typeof msg.id==='string'&&store.agents.has(msg.id)&&pack?.sprites.some(s=>s.id===msg.species)){
      assignments[msg.id]=msg.species;await context.workspaceState.update('characters',assignments);publish();
     }
     if(msg.type==='focus'&&typeof msg.id==='string'){
-     const t=[...terminals.entries()].find(([,id])=>id===msg.id)?.[0];
+     const t=[...terminals.entries()].find(([,id])=>id===(sessions.links.get(msg.id)||msg.id))?.[0];
      if(t)t.show();else{
       const a=store.agents.get(msg.id);
       const command=a?.provider==='codex'?'chatgpt.openSidebar':a?.provider==='claude'?'claude-vscode.sidebar.open':null;
@@ -119,5 +119,5 @@ export async function activate(context:vscode.ExtensionContext) {
  context.subscriptions.push(vscode.commands.registerCommand('pmdAgents.open',open),
   vscode.commands.registerCommand('pmdAgents.setup',()=>setup(context)),
   vscode.commands.registerCommand('pmdAgents.removeHooks',()=>setup(context,true)));
- return {snapshot:()=>store.snapshot(),...(context.extensionMode===vscode.ExtensionMode.Test?{registration:receiver.registration,ready:()=>ready}: {})};
+ return {snapshot:()=>store.snapshot(),...(context.extensionMode===vscode.ExtensionMode.Test?{registration:receiver.registration,ready:()=>ready,sessions}: {})};
 }
