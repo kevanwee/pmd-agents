@@ -56,7 +56,7 @@ const pc=new PokemonPc(app,{send,assetBase:boot.assetBase,pack:()=>pack,
  session:()=>{const a=agents.find(x=>x.id===selected&&x.attached&&!x.ended);return a?{id:a.id,label:label(a),species:species(a)?.id}:undefined;},
  sessions:()=>shown().map(a=>({id:a.id,label:label(a),species:species(a)?.id})),
  select:id=>{if(!agents.some(a=>a.id===id))return;selectedByUser=true;selected=id;area=placement.page(id);render();},
- choose:id=>{if(!selected||!pack?.sprites.some(s=>s.id===id))return;assignments[selected]=id;if(!demo)send({type:'character',id:selected,species:id});render();},
+ choose:(id,sessionId)=>{if(!agents.some(a=>a.id===sessionId&&a.attached&&!a.ended)||!pack?.sprites.some(s=>s.id===id))return;assignments[sessionId]=id;if(!demo)send({type:'character',id:sessionId,species:id});render();},
  recall:()=>host?.getState()?.pc,remember:state=>host?.setState({...host.getState(),pc:state})});
 /** Move colours by type: two tones per type, original decorative values. */
 const MOVE_COLORS:Record<string,string[]>={normal:['#ebc8ff','#fff0ff'],fire:['#ff9843','#fff1a5'],water:['#70d5ff','#e2faff'],grass:['#7ec950','#ddf899'],electric:['#ffe45c','#fffbd1'],ice:['#a8ecf5','#f0fdff'],fighting:['#ffd287','#fff7d1'],poison:['#d78cf0','#f6e3ff'],ground:['#e6c37a','#fff3cf'],flying:['#c2b8ff','#f1eeff'],psychic:['#ff8fb8','#ffe3ee'],bug:['#c6e05a','#f3ffc6'],rock:['#d2bd7c','#f5ecd0'],ghost:['#9a86d9','#e6dfff'],dragon:['#8f7cff','#e3deff'],dark:['#8d7f7a','#e4d9d5'],steel:['#c9c9e8','#f3f3ff'],fairy:['#ffb3cf','#ffe9f1']};
@@ -295,7 +295,7 @@ function draw(delta:number){
   const walking=!still&&!attention&&actor.walking;
   const action=attacking?motion.action:walking?'Walk':a.activity==='idle'&&!attention&&now-a.lastSeen>30000?'Sleep':'Idle';
   if(active)actor.direction=2;
-  const anim=sp.animations[action],f=still||attention?0:frameAt(anim,attacking?motion.cycle:actor.elapsed),row=anim.rows===1?0:actor.direction;
+  const anim=sp.animations[action],f=still?0:frameAt(anim,attacking?motion.cycle:actor.elapsed),row=anim.rows===1?0:actor.direction;
   const sheet=img(anim.file),target={x:home.x+29,y:home.y};
   if(training)dummy(target,active&&motion.hit,active?motion.hit?motion.hurtTime:actor.elapsed:0);
   trainingFrames.push({id:a.id,action,frame:f,hit:active&&motion.hit,projectile:active?motion.projectile:undefined});

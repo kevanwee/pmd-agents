@@ -8,7 +8,7 @@ PMD Agents is a local VS Code extension inspired by [Pixel Agents](https://githu
 ![Development](https://img.shields.io/badge/status-local%20development-e5c77d)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.109%2B-007acc)
 
-> **Development build 0.4.1.** Terminal tracking and live Codex transcript observation are verified locally. Native Claude records have been replayed successfully; live Claude chat tracking still needs validation. This is an unofficial, non-commercial fan project.
+> **Development build 0.4.2.** Terminal tracking and live Codex transcript observation are verified locally. Native Claude records have been replayed successfully; live Claude chat tracking still needs validation. This is an unofficial, non-commercial fan project.
 
 ![PMD Agents showing Eevee training, Riolu scouting and Ceruledge waiting for approval in Transform Forest](docs/screenshots/guild.png)
 
@@ -70,7 +70,7 @@ npm run package
 
 In VS Code:
 
-1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.4.1.vsix`.
+1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.4.2.vsix`.
 2. Run **Developer: Reload Window**, then **PMD Agents: Open Guild**.
 3. Choose a local artwork pack under **Connections → Choose asset pack**.
 4. Every discovered session spawns a Pokémon as it appears. **Connections → Auto-attach** controls this (and **Workspace auto-connect** the narrower, verified-workspace mode). If another guild window shares the same folders, automatic attachment pauses and you choose the intended session manually.
@@ -131,7 +131,7 @@ In **Activity**, use the source picker to switch between Codex, Claude and termi
 | Working / thinking / responding | Train against Substitute, then explore between bouts |
 | Reading / searching | Routes across the clearing |
 | Editing or running a command | Training and exploration circuit |
-| Approval or input requested | Stop with an attention bubble |
+| Approval or input requested | Idle in place with an attention bubble |
 | Turn finished | Rest, then sleep |
 | Stale, paused or unavailable observation | Stop and show uncertainty |
 
@@ -191,14 +191,16 @@ npm run package
 
 - Unit checks cover event ordering, attention, window membership, source recovery, bounded history, stable placement, transport, parsing, the PNG decoder, AnimData parsing, the Pokédex catalog and the main-series sprite and type data.
 - The asset integrity, anchor-equivalence and import tests run when the ignored local pack exists; source-only CI reports them skipped. The anchor test confirms the TypeScript importer measures exactly the anchors the Python importer measured for every local sheet.
-- Browser checks require that pack and start a temporary preview server automatically. They verify motion, attention stops, clearings, journal contents, the storage system (boxes, forms menu, keyboard navigation, a chosen import) and narrow layouts.
+- Browser checks require that pack and start a temporary preview server automatically. They verify motion, attention idle loops, clearings, journal contents, the storage system (boxes, forms menu, keyboard navigation, a chosen import) and narrow layouts.
 - VS Code tests launch an isolated profile and exercise real shell integration. Set `PMD_VSCODE_EXECUTABLE` for another installation.
 - `npm run preview` opens a browser demo at `http://127.0.0.1:5188`; it is not a live browser monitor.
 - `npm run screenshots` regenerates the committed, labelled demo screenshots. Real session screenshots, logs and probe exports stay in ignored `artifacts`.
 
 The repository is public. Earlier private-repository Actions jobs were blocked by an account billing/spending restriction; current workflow status is shown by the Checks badge. No billing settings were changed.
 
-The local build has **55 passing focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
+The local build has **61 passing focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
+
+See the [0.4.2 code review and PC portability plan](docs/REVIEW-2026-10-10.md) for findings, remaining reliability work and the proposed Kevanwee/Voracity integration.
 
 ## Roadmap
 

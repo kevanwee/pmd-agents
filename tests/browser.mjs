@@ -6,6 +6,8 @@ await mkdir('artifacts',{recursive:true});
 const preview=await startPreview();
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1440,height:1000}});
+page.setDefaultTimeout(15000);
+try {
 await page.addInitScript(()=>{window.sent=[];window.acquireVsCodeApi=()=>({postMessage:m=>window.sent.push(m),getState:()=>({}),setState:()=>{}});});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.goto(preview.url);await page.getByRole('button',{name:'Try demo'}).click();
@@ -28,6 +30,12 @@ await page.getByRole('button',{name:'Team',exact:true}).click();
 await page.getByRole('button',{name:/Open the Pokémon storage system/}).click();
 assert.ok(await page.getByRole('dialog',{name:'Pokémon storage'}).isVisible());
 const sentTypes=(await page.evaluate(()=>window.sent)).map(m=>m.type);assert.ok(sentTypes.includes('dex')&&sentTypes.includes('gameTypes'),'the catalog and type data are requested from the host');
+const initialDexRequests=await page.evaluate(()=>window.sent.filter(m=>m.type==='dex').length);
+await page.evaluate(()=>window.postMessage({type:'dex',error:'Offline fixture'},'*'));
+await page.getByText('Offline fixture',{exact:true}).waitFor();await page.waitForTimeout(200);
+assert.equal(await page.evaluate(()=>window.sent.filter(m=>m.type==='dex').length),initialDexRequests,'catalog failures wait for an explicit retry');
+await page.getByRole('button',{name:'Try again',exact:true}).click();
+assert.equal(await page.evaluate(()=>window.sent.filter(m=>m.type==='dex').length),initialDexRequests+1);
 await page.evaluate(d=>window.postMessage({type:'dex',dex:d},'*'),dexFixture);
 await page.locator('.pc-slot').first().waitFor();
 assert.equal(await page.locator('.pc-head h2').textContent(),'Box 1');assert.equal(await page.locator('.pc-slot').count(),30);
@@ -70,7 +78,17 @@ assert.deepEqual((await page.evaluate(()=>window.sent)).at(-1),{type:'dexImport'
 assert.ok(await page.getByRole('button',{name:'Shiny · Importing…',exact:true}).isVisible());
 await page.screenshot({path:'artifacts/guild-pc.png'});
 const imported={...manifest.sprites.find(s=>s.id==='eevee'),id:'pikachu-shiny',name:'Pikachu (Shiny)',dex:25,form:{path:'0025/0000/0001',label:'Shiny'}};
+// Change the selected teammate while the original Codex import is still pending.
+await page.getByRole('button',{name:/Switch to the game view/}).click();
+await page.getByRole('button',{name:'Guild team',exact:true}).click();
+await page.locator('.gs-party-row').filter({hasText:'Claude Code · Charmander'}).click();
 await page.evaluate(s=>window.postMessage({type:'dexImport',path:'0025/0000/0001',id:'pikachu-shiny',species:s},'*'),imported);
+await page.getByText('Codex now has Pikachu (Shiny).',{exact:true}).waitFor();
+assert.equal(await page.locator('.gs-party-row[aria-pressed=true]').textContent(),'Claude Code · Charmander','the newly selected teammate keeps its Pokémon');
+assert.ok(await page.locator('.gs-party-row').filter({hasText:'Codex · Pikachu (Shiny)'}).isVisible(),'the original teammate receives the imported form');
+await page.locator('.gs-party-row').filter({hasText:'Codex · Pikachu (Shiny)'}).click();
+await page.getByRole('button',{name:/Switch to the guild view/}).click();
+await page.getByRole('button',{name:'Close storage',exact:true}).click();
 await page.getByRole('dialog',{name:'Pokémon storage'}).waitFor({state:'hidden'});
 assert.equal(await page.locator('.speaker').textContent(),'Codex · Pikachu (Shiny)','the imported form is chosen for the selected session');
 await page.getByRole('button',{name:/Open the Pokémon storage system/}).click();
@@ -119,6 +137,13 @@ await page.screenshot({path:'artifacts/guild-working.png',fullPage:true});
 snapshot.agents[0].attention='approval';await page.evaluate(s=>window.postMessage(s,'*'),snapshot);await page.waitForTimeout(100);
 const stopped=await page.locator('canvas').getAttribute('data-positions');await page.waitForTimeout(900);assert.equal(await page.locator('canvas').getAttribute('data-positions'),stopped);
 assert.ok(JSON.parse(await page.locator('canvas').getAttribute('data-training')).every(a=>!a.hit&&a.projectile===undefined&&a.action==='Idle'));
+const idleFrame=JSON.parse(await page.locator('canvas').getAttribute('data-training'))[0].frame;
+await page.waitForFunction(f=>JSON.parse(document.querySelector('canvas').dataset.training)[0].frame!==f,idleFrame);
+assert.equal(await page.locator('canvas').getAttribute('data-positions'),stopped,'attention idles without walking');
+await page.getByRole('button',{name:'Quiet',exact:true}).click();await page.waitForTimeout(100);
+const quietIdle=await page.locator('canvas').getAttribute('data-training');await page.waitForTimeout(350);
+assert.equal(await page.locator('canvas').getAttribute('data-training'),quietIdle,'quiet still freezes attention animations');
+await page.getByRole('button',{name:'Resume motion',exact:true}).click();
 snapshot.links={};snapshot.evidence['codex:fixture'].connection='unavailable';await page.evaluate(s=>window.postMessage(s,'*'),snapshot);
 await page.waitForFunction(()=>document.querySelectorAll('.team-row').length===2);
 assert.ok(await page.getByRole('heading',{name:'Observation unavailable',exact:true}).isVisible());
@@ -166,6 +191,7 @@ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=inner
 assert.deepEqual(errors,[]);
 // Actual map pixels animate without agents; motion settings pause both layers and sprites.
 const maps=await browser.newPage({viewport:{width:1100,height:900}});
+maps.setDefaultTimeout(15000);
 maps.on('pageerror',e=>errors.push(e.message));
 await maps.goto(preview.url);await maps.waitForFunction(()=>document.querySelector('canvas').dataset.map==='forest');await maps.waitForTimeout(700);
 const pixels=await maps.locator('canvas').evaluate(c=>c.toDataURL());
@@ -182,4 +208,5 @@ await maps.setViewportSize({width:320,height:850});assert.equal(await maps.evalu
 await maps.emulateMedia({reducedMotion:'reduce'});await maps.waitForTimeout(100);const frozen=await maps.locator('canvas').getAttribute('data-world-time');await maps.waitForTimeout(250);assert.equal(await maps.locator('canvas').getAttribute('data-world-time'),frozen);
 await maps.getByRole('button',{name:'Activity',exact:true}).click();assert.ok(await maps.getByRole('combobox',{name:'Activity source'}).isVisible());
 assert.deepEqual(errors,[]);
-await browser.close();preview.close();console.log('Browser checks passed: motion, stable placement, journal, links, demo isolation, credits, storage system and narrow layout. Screenshots in artifacts/.');
+console.log('Browser checks passed: motion, stable placement, journal, links, demo isolation, credits, storage system and narrow layout. Screenshots in artifacts/.');
+} finally {await browser.close();preview.close();}

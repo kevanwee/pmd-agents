@@ -1,3 +1,5 @@
+import {writeFile,unlink} from 'node:fs/promises';
+import {join} from 'node:path';
 import * as vscode from 'vscode';
 import assert from 'node:assert/strict';
 export async function run(){
@@ -31,6 +33,18 @@ export async function run(){
   assert.equal(api.snapshot().find((a:any)=>a.id==='codex:probe').attached,true);assert.equal(api.sessions.membership.get('codex:probe'),'auto');
   assert.equal(api.sessions.journal.snapshot()['codex:probe'][0].kind,'session');
   assert.ok(Object.values(api.sessions.journal.snapshot()).some((entries:any)=>entries.some((e:any)=>e.kind==='finish'&&e.source==='terminal')));
+  // An unreadable/malformed lease registry must pause automatic ownership claims.
+  const badLease=join(process.env.PMD_AGENTS_REGISTRY!,'workspaces','bad.json');
+  try{
+   await writeFile(badLease,'invalid');
+   const paused=Date.now()+6500;
+   while(api.snapshot().find((a:any)=>a.id==='codex:probe')?.attached&&Date.now()<paused)await new Promise(r=>setTimeout(r,100));
+   assert.equal(api.snapshot().find((a:any)=>a.id==='codex:probe').attached,false,'Unavailable lease must pause auto-attach');
+   assert.ok(api.snapshot().some((a:any)=>a.provider==='terminal'&&a.attached),'Direct terminal binding survives');
+  }finally{await unlink(badLease);}
+  const resumed=Date.now()+6500;
+  while(!api.snapshot().find((a:any)=>a.id==='codex:probe')?.attached&&Date.now()<resumed)await new Promise(r=>setTimeout(r,100));
+  assert.equal(api.snapshot().find((a:any)=>a.id==='codex:probe').attached,true,'Auto-attach resumes after the lease recovers');
   api.sessions.attach('codex:probe');
   const terminal=api.snapshot().find((a:any)=>a.provider==='terminal'&&!a.ended);
   assert.equal(api.sessions.link('codex:probe',terminal.id),true);

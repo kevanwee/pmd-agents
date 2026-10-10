@@ -1,6 +1,8 @@
+import {atomicWrite,locked,mergeFiles,mergeReceipts} from './storage';
+import {readBounded} from './download';
 import {createHash} from 'node:crypto';
-import {mkdir,readFile,rename,writeFile,stat} from 'node:fs/promises';
-import {dirname,resolve} from 'node:path';
+import {readFile,stat} from 'node:fs/promises';
+import {resolve} from 'node:path';
 import {decodePng,type Png} from './png';
 import {parseAnimData,resolveAnim} from './animdata';
 import {creditName} from './dex';
@@ -18,9 +20,7 @@ export async function fetchPinned(rel:string,limit=4_000_000):Promise<Uint8Array
  if(!/^[A-Za-z0-9_./-]+$/.test(rel)||rel.includes('..'))throw Error('Invalid source path');
  const response=await fetch(RAW+rel,{signal:AbortSignal.timeout(30000)});
  if(!response.ok)throw Error('SpriteCollab returned '+response.status+' for '+rel);
- const length=Number(response.headers.get('content-length')||0);if(length>limit)throw Error('Source file too large: '+rel);
- const bytes=new Uint8Array(await response.arrayBuffer());if(bytes.length>limit)throw Error('Source file too large: '+rel);
- return bytes;
+ return readBounded(response,limit);
 }
 /** Read a pinned file from the pack's source cache when present, otherwise fetch it. The cache layout matches the Python importer. */
 export function cachedFetch(root:string,fetchRel:Fetch=fetchPinned):Fetch {
@@ -81,24 +81,26 @@ export async function importSpecies(req:ImportRequest,get:Fetch,names:string):Pr
 }
 /** Write an import into the pack and append it to the manifest atomically. Existing entries with the same id are replaced. */
 export async function writeImport(root:string,result:ImportResult,validate:(root:string,s:Species)=>Promise<void>){
+ return locked(resolve(root,'manifest.json'),async()=>{
  for(const [rel,bytes] of Object.entries(result.written)){
-  if(!/^[-a-zA-Z0-9_./]+$/.test(rel)||rel.includes('..'))throw Error('Invalid pack path');
-  const path=resolve(root,rel);await mkdir(dirname(path),{recursive:true});await writeFile(path,bytes);
+  if(!/^[-a-zA-Z0-9_./]+$/.test(rel)||rel.includes('..')||rel.startsWith('/'))throw Error('Invalid pack path');
+  await atomicWrite(resolve(root,rel),bytes);
  }
  await validate(root,result.species);
  const manifestPath=resolve(root,'manifest.json');
  const manifest=JSON.parse(await readFile(manifestPath,'utf8')) as Pack&{files?:Receipt[]};
  manifest.sprites=[...manifest.sprites.filter(s=>s.id!==result.species.id),result.species];
- const known=new Set((manifest.files||[]).map(f=>f.file));
- manifest.files=[...(manifest.files||[]),...result.files.filter(f=>!known.has(f.file))];
- await writeFile(manifestPath+'.tmp',JSON.stringify(manifest)+'\n');await rename(manifestPath+'.tmp',manifestPath);
+ manifest.files=mergeFiles(manifest.files||[],result.files);
+ const json=JSON.stringify(manifest)+'\n';
+ if(manifest.sprites.length>1200||Buffer.byteLength(json)>16_000_000)throw Error('The pack has reached its supported size limit.');
+ await atomicWrite(manifestPath,json);
  return manifest;
+ });
 }
 /** Fetch box portraits (Normal.png) for the storage grid into dex/portraits; receipts go to dex/portraits.json. */
 export async function ensurePortraits(root:string,paths:string[],get:Fetch=fetchPinned,fileOf:(path:string)=>string){
  const ready:Record<string,string>={},failed:string[]=[];
- const receiptsPath=resolve(root,'dex','portraits.json');let receipts:Receipt[]=[];
- try{receipts=JSON.parse(await readFile(receiptsPath,'utf8'));if(!Array.isArray(receipts))receipts=[];}catch{}
+ const receiptsPath=resolve(root,'dex','portraits.json');const receipts:Receipt[]=[];
  const queue=[...paths];
  await Promise.all(Array.from({length:4},async()=>{
   for(let path=queue.shift();path!==undefined;path=queue.shift()){
@@ -107,11 +109,11 @@ export async function ensurePortraits(root:string,paths:string[],get:Fetch=fetch
     try{if((await stat(target)).isFile()){ready[path]=file;continue;}}catch{}
     const bytes=await get('portrait/'+path+'/Normal.png');
     if(bytes.length<24||bytes.length>200000||Buffer.from(bytes.buffer,bytes.byteOffset,8).toString('hex')!=='89504e470d0a1a0a')throw Error('Not a portrait');
-    await mkdir(dirname(target),{recursive:true});await writeFile(target+'.tmp',bytes);await rename(target+'.tmp',target);
+    await atomicWrite(target,bytes);
     receipts.push({file,source:RAW+'portrait/'+path+'/Normal.png',sha256:sha(bytes),distribution:'local-reference-only',changes:'Unmodified'});ready[path]=file;
    }catch{failed.push(path);}
   }
  }));
- if(Object.keys(ready).length)await writeFile(receiptsPath,JSON.stringify(receipts)+'\n').catch(()=>{});
+ await mergeReceipts(receiptsPath,receipts);
  return {ready,failed};
 }
