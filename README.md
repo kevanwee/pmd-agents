@@ -37,19 +37,21 @@ PMD Agents is a local VS Code extension inspired by [Pixel Agents](https://githu
 
 ## Pokémon storage system
 
-Select a teammate, then press **Pokémon PC** in its portrait card (or **Browse the Pokémon PC** under the team list). The storage system shows every species in National Dex order, thirty to a box, like the PC in the main-series games. Open a Pokémon for its menu:
+Select a teammate, then press **Pokémon PC** in its portrait card (or **Browse the Pokémon PC** under the team list). The storage system shows every species in National Dex order, thirty to a box, laid out like the PC in the main-series games: the box with its icons on the right, the selected Pokémon's front sprite, number and types on the left, and a bar with **Guild team** (pick which teammate you are dressing), **Fetch all game sprites** and **Return**. Opening a Pokémon pops up its menu:
 
 - **Choose** assigns it to the selected session. A species that is not in your local pack yet is imported first (**Import & choose**).
-- **Forms** lists the shiny, female and alternate forms that SpriteCollab has drawn, each marked *In roster*, *Ready*, *Portrait only* or *Not drawn yet*. Ready forms can be chosen like any species.
-- **Summary** shows how many forms and animations are recorded, the primary sprite credit and a link to the exact source folder.
+- **Forms** lists the shiny, female and alternate forms that SpriteCollab has drawn, each marked *In roster*, *Ready*, *Portrait only* or *Not drawn yet*. Ready forms can be chosen like any species; pointing at a shiny form shows the shiny front sprite.
+- **Summary** shows the types, how many forms and animations are recorded, the primary sprite credit and a link to the exact source folder.
 
-Arrow keys move the cursor, Page Up / Page Down change boxes, Enter opens the menu, Escape steps back, and the search field accepts a name or `#number`.
+Arrow keys move the cursor, Page Up / Page Down change boxes, Enter opens the menu, Escape steps back one level, and the search field accepts a name or `#number`. **Guild view** switches to the alternative layout with PMD SpriteCollab portraits in the slots and the menu beside the box; the choice is remembered.
 
-![The storage system open on Box 1 with Charmander's forms listed; simulated demo](docs/screenshots/storage.png)
+![The storage system open on Box 1 in the game view, with Charmander's forms listed and the shiny front sprite previewed; simulated demo](docs/screenshots/storage.png)
 
-The catalog comes from SpriteCollab's own tracker at the pinned revision (1,025 species, about 4,000 drawn forms, about 3,200 with the Idle, Walk, Attack and Sleep sheets the guild needs). Box portraits and chosen sprite sets are fetched on demand into your local pack, with the original credit records and SHA-256 receipts, then validated for geometry, anchors and timing before they can be chosen. Nothing fetched is bundled or uploaded. The starter pack still comes from [`assets/roster.json`](assets/roster.json) and the Python importer; both importers measure the same anchors from the same sheets. Substitute is a training prop, not a selectable agent.
+![The same box in the guild view with PMD portraits; simulated demo](docs/screenshots/storage-guild.png)
 
-Move colours for imported Pokémon default to the neutral theme unless the pack already knows that species' type. Forms without their own portrait borrow the nearest drawn one, which the summary says. The tracker's completion phase decides what counts as *Ready*; the importer still verifies every sheet, so a stale tracker entry fails honestly instead of producing a broken teammate.
+The catalog comes from SpriteCollab's own tracker at the pinned revision (1,025 species, about 4,000 drawn forms, about 3,200 with the Idle, Walk, Attack and Sleep sheets the guild needs). The game view's box icons (Generation VIII style, through #898; later species show their front sprite scaled down), front sprites and shiny fronts come from the [PokeAPI sprites repository](https://github.com/PokeAPI/sprites) and types from [PokeAPI's CSV data](https://github.com/PokeAPI/pokeapi), both at pinned revisions. They are fetched a box at a time as you browse, or all at once with **Fetch all game sprites** (about 2,950 files) or `npm run import:game`. PMD portraits and chosen sprite sets are fetched into your local pack with the original credit records and SHA-256 receipts, then validated for geometry, anchors and timing before they can be chosen. Nothing fetched is bundled or uploaded. The starter pack still comes from [`assets/roster.json`](assets/roster.json) and the Python importer; both importers measure the same anchors from the same sheets. Substitute is a training prop, not a selectable agent.
+
+Move colours follow the species' primary type for every type, from the pack's own record or PokeAPI's data. Forms without their own portrait borrow the nearest drawn one, which the summary says. The tracker's completion phase decides what counts as *Ready*; the importer still verifies every sheet, so a stale tracker entry fails honestly instead of producing a broken teammate.
 
 ![Charizard training beside Substitute, Blastoise scouting and Venusaur waiting for attention; simulated demo](docs/screenshots/kanto.png)
 
@@ -86,7 +88,7 @@ python scripts/import-assets.py --voracity "path/to/voracity"
 
 The importer writes `assets/local/manifest.json`, original credit records and file hashes. Use `--output` to select another local pack directory. See [asset handling and credits](docs/ATTRIBUTION.md).
 
-The storage system needs no Python: the extension builds `dex.json` from the pinned tracker the first time the PC opens and imports chosen Pokémon itself. To prepare the catalog ahead of time, or refresh it after changing the pinned revision, run `npm run import:dex` (optionally with a pack directory).
+The storage system needs no Python: the extension builds `dex.json` from the pinned tracker the first time the PC opens and imports chosen Pokémon itself. To prepare the catalog ahead of time, or refresh it after changing the pinned revision, run `npm run import:dex` (optionally with a pack directory). `npm run import:game` fetches every main-series box icon, front and shiny sprite plus type data in one pass; the PC's **Fetch all game sprites** button does the same from inside VS Code.
 
 ### Connect agents
 
@@ -133,7 +135,7 @@ In **Activity**, use the source picker to switch between Codex, Claude and termi
 | Turn finished | Rest, then sleep |
 | Stale, paused or unavailable observation | Stop and show uncertainty |
 
-Move colours follow the Pokémon’s theme: fire, water, grass, fighting or neutral. Attacks, projectiles and hit reactions are decorative; they do not count tool calls, measure progress or imply successful work.
+Move colours follow the Pokémon’s primary type, one pair of tones for each of the eighteen types. Attacks, projectiles and hit reactions are decorative; they do not count tool calls, measure progress or imply successful work.
 
 Quiet and reduced-motion settings stop movement while keeping status visible. “Turn finished” does not mean the requested software is correct or the whole task is complete. A generic command exiting zero is not automatically a test pass.
 
@@ -187,7 +189,7 @@ npm run test:extension
 npm run package
 ```
 
-- Unit checks cover event ordering, attention, window membership, source recovery, bounded history, stable placement, transport, parsing, the PNG decoder, AnimData parsing and the Pokédex catalog.
+- Unit checks cover event ordering, attention, window membership, source recovery, bounded history, stable placement, transport, parsing, the PNG decoder, AnimData parsing, the Pokédex catalog and the main-series sprite and type data.
 - The asset integrity, anchor-equivalence and import tests run when the ignored local pack exists; source-only CI reports them skipped. The anchor test confirms the TypeScript importer measures exactly the anchors the Python importer measured for every local sheet.
 - Browser checks require that pack and start a temporary preview server automatically. They verify motion, attention stops, clearings, journal contents, the storage system (boxes, forms menu, keyboard navigation, a chosen import) and narrow layouts.
 - VS Code tests launch an isolated profile and exercise real shell integration. Set `PMD_VSCODE_EXECUTABLE` for another installation.
@@ -196,7 +198,7 @@ npm run package
 
 The repository is public. Earlier private-repository Actions jobs were blocked by an account billing/spending restriction; current workflow status is shown by the Checks badge. No billing settings were changed.
 
-The local build has **51 passing focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
+The local build has **54 passing focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
 
 ## Roadmap
 
@@ -210,8 +212,9 @@ The local build has **51 passing focused tests**, plus browser and VS Code integ
 - [x] Workspace automatic reconnection, persistent exclusions and overlapping-window checks
 - [x] Animated Transform Forest, expanded meadow navigation, map selection and zoom
 - [x] Pokémon storage system: the full National Dex with forms, on-demand validated imports and credits
+- [x] Main-series game view as the primary storage layout, with every box icon, front and shiny sprite and typed move colours
 - [ ] Durable exact-window manual attachment restoration and process reconciliation
-- [ ] Outcome poses (Hurt, Pose), per-species move colours for imported Pokémon, more maps and optional dungeon presentation
+- [ ] Outcome poses (Hurt, Pose), more maps and optional dungeon presentation
 
 The [full plan](docs/PLAN.md) separates delivered work from future proposals. [Research](docs/RESEARCH.md) records the predecessor review and archive receipt.
 
@@ -219,7 +222,7 @@ The [full plan](docs/PLAN.md) separates delivered work from future proposals. [R
 
 Built by **Kevan Wee**. Inspired by **Pablo De Lucca and the Pixel Agents contributors**; no Pixel Agents source code is copied in this implementation. [The Office](https://github.com/kevanwee/theoffice) is the archived predecessor; Voracity supplied the visual references and local asset-pipeline lessons.
 
-Sprite/portrait records credit **CHUNSOFT, baronessfaron, Fearless-Quit, Top_Kec, JFain, 0palite, Emboarger, Emmuffin, Grimlin, G〜 and bwappi**, plus contributors recorded upstream as Discord IDs **199989579682414592** and **276175146304405514**, sourced through [PMD SpriteCollab](https://github.com/PMDCollab/SpriteCollab). Pokémon imported through the storage system carry their own contributors from the same credit records into the in-guild Credits view and the local manifest. Original game sprites and individual fan-art terms are distinguished in the pack; a repository-wide fan-art licence is not assumed to cover every asset. **Pixelify Sans Project Authors** provide the font under SIL OFL. Transform Forest and its stone frames credit **Toastypk**, with the **Pamtre Berry / Taliax** mirror and original source receipts retained locally. Thunder Meadow is a local game-map reference; its original ripper remains unresolved. Screenshots contain rendered third-party artwork and retain those attributions.
+Sprite/portrait records credit **CHUNSOFT, baronessfaron, Fearless-Quit, Top_Kec, JFain, 0palite, Emboarger, Emmuffin, Grimlin, G〜 and bwappi**, plus contributors recorded upstream as Discord IDs **199989579682414592** and **276175146304405514**, sourced through [PMD SpriteCollab](https://github.com/PMDCollab/SpriteCollab). Pokémon imported through the storage system carry their own contributors from the same credit records into the in-guild Credits view and the local manifest. The storage system's box icons, front sprites and shiny sprites are main-series game artwork (Nintendo, Creatures Inc., GAME FREAK) obtained through the [PokeAPI sprites repository](https://github.com/PokeAPI/sprites) at a pinned revision, and its type data comes from [PokeAPI](https://github.com/PokeAPI/pokeapi) (BSD-3-Clause); both stay in the local pack with receipts. Original game sprites and individual fan-art terms are distinguished in the pack; a repository-wide fan-art licence is not assumed to cover every asset. **Pixelify Sans Project Authors** provide the font under SIL OFL. Transform Forest and its stone frames credit **Toastypk**, with the **Pamtre Berry / Taliax** mirror and original source receipts retained locally. Thunder Meadow is a local game-map reference; its original ripper remains unresolved. Screenshots contain rendered third-party artwork and retain those attributions.
 
 Original project code is currently **all rights reserved**; see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md). This repository does not grant redistribution rights to third-party artwork. Source sheets and game maps remain outside the repository and installable package.
 

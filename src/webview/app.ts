@@ -54,7 +54,12 @@ const label=(a:Agent)=>a.provider==='terminal'?(terminalNames[a.id]||'Terminal')
 /** The storage system chooses a Pokémon (or form) for the selected session; imports arrive from the host and join the pack. */
 const pc=new PokemonPc(app,{send,assetBase:boot.assetBase,pack:()=>pack,
  session:()=>{const a=agents.find(x=>x.id===selected&&x.attached&&!x.ended);return a?{id:a.id,label:label(a),species:species(a)?.id}:undefined;},
- choose:id=>{if(!selected||!pack?.sprites.some(s=>s.id===id))return;assignments[selected]=id;if(!demo)send({type:'character',id:selected,species:id});render();}});
+ sessions:()=>shown().map(a=>({id:a.id,label:label(a),species:species(a)?.id})),
+ select:id=>{if(!agents.some(a=>a.id===id))return;selectedByUser=true;selected=id;area=placement.page(id);render();},
+ choose:id=>{if(!selected||!pack?.sprites.some(s=>s.id===id))return;assignments[selected]=id;if(!demo)send({type:'character',id:selected,species:id});render();},
+ recall:()=>host?.getState()?.pc,remember:state=>host?.setState({...host.getState(),pc:state})});
+/** Move colours by type: two tones per type, original decorative values. */
+const MOVE_COLORS:Record<string,string[]>={normal:['#ebc8ff','#fff0ff'],fire:['#ff9843','#fff1a5'],water:['#70d5ff','#e2faff'],grass:['#7ec950','#ddf899'],electric:['#ffe45c','#fffbd1'],ice:['#a8ecf5','#f0fdff'],fighting:['#ffd287','#fff7d1'],poison:['#d78cf0','#f6e3ff'],ground:['#e6c37a','#fff3cf'],flying:['#c2b8ff','#f1eeff'],psychic:['#ff8fb8','#ffe3ee'],bug:['#c6e05a','#f3ffc6'],rock:['#d2bd7c','#f5ecd0'],ghost:['#9a86d9','#e6dfff'],dragon:['#8f7cff','#e3deff'],dark:['#8d7f7a','#e4d9d5'],steel:['#c9c9e8','#f3f3ff'],fairy:['#ffb3cf','#ffe9f1']};
 const shown=()=>{const linked=new Set(demo?[]:Object.entries(links).filter(([id])=>agents.some(a=>a.id===id&&a.attached&&!a.ended)).map(([,terminal])=>terminal));return agents.filter(a=>a.attached&&!a.ended&&!linked.has(a.id));};
 const inClearing=()=>{const pages=placement.pages(),page=pages.includes(area)?area:pages[0]??0;return shown().filter(a=>placement.page(a.id)===page);};
 function ensureActors(){
@@ -208,6 +213,7 @@ function render() {
   sidebar.append(node('p','SpriteCollab: individual asset terms are preserved in the local pack. Original game sprites are not automatically covered by the fan-art licence.','muted'));
   for(const map of pack?.maps||[]){sidebar.append(node('h3',map.name),node('p',map.credit,'muted'));for(const layer of map.layers||[])sidebar.append(node('p',layer.credit,'muted'));}
   sidebar.append(node('p','Meadow breeze: original ambient animation. Map geometry is authored for this project, not extracted game collision data.','muted'),node('p','Pixelify Sans Project Authors · SIL OFL. Substitute: SpriteCollab source credits above. Move particles: original decorative effects.','muted'));
+  sidebar.append(node('h3','Storage system'),node('p','Box icons, front sprites and shiny sprites are main-series game artwork (Nintendo, Creatures Inc., GAME FREAK), obtained through the PokeAPI sprites repository at a pinned revision and kept only in your local pack. Types come from PokeAPI data (BSD-3-Clause). The storage frames, wallpaper and menus are original CSS.','muted'));
  }
  const live=team.filter(a=>a.attention!=='none').length;
  app.querySelector('#live-status')!.textContent=live?live+' session'+(live===1?'':'s')+' need attention':'';
@@ -296,8 +302,7 @@ function draw(delta:number){
   ctx.fillStyle='#17252355';ctx.beginPath();ctx.ellipse(x,y,7,2,0,0,Math.PI*2);ctx.fill();
   if(sheet){const anchor=anim.anchors[row][f];ctx.drawImage(sheet,f*anim.w,row*anim.h,anim.w,anim.h,x-anchor[0],y-anchor[1],anim.w,anim.h);}
   if(active&&(motion.hit||motion.projectile!==undefined)){
-   const colors:Record<string,string[]>={fire:['#ff9843','#fff1a5'],water:['#70d5ff','#e2faff'],grass:['#7ec950','#ddf899'],fighting:['#ffd287','#fff7d1'],normal:['#ebc8ff','#fff0ff']};
-   const color=colors[sp.element||'normal']||colors.normal;
+   const color=MOVE_COLORS[sp.element||'normal']||MOVE_COLORS.normal;
    if(motion.projectile!==undefined){const anchor=anim.anchors[row][f],head=anim.heads?.[row]?.[f]||anchor;const from={x:x-anchor[0]+head[0],y:y-anchor[1]+head[1]},t=motion.projectile;const px=Math.round(from.x+(target.x-from.x)*t),py=Math.round(from.y+(target.y-12-from.y)*t);ctx.fillStyle=color[0];ctx.fillRect(px-3,py-3,7,5);ctx.fillStyle=color[1];ctx.fillRect(px,py-2,3,3);}
    if(motion.hit){const spread=5+Math.floor(motion.hurtTime/35);ctx.fillStyle=color[0];for(let n=0;n<6;n++){const angle=n*Math.PI/3;ctx.fillRect(Math.round(target.x+Math.cos(angle)*spread),Math.round(target.y-12+Math.sin(angle)*spread),2,3);}ctx.fillStyle=color[1];ctx.fillRect(target.x-2,target.y-14,4,4);}
   }
@@ -350,6 +355,9 @@ window.addEventListener('message',event=>{
  if(m.type==='visibility'){visible=m.visible;restart();}
  if(m.type==='dex')pc.setDex(m);
  if(m.type==='dexPortraits')pc.portraitsReady(m);
+ if(m.type==='gameTypes')pc.setTypes(m);
+ if(m.type==='gameAssets')pc.gameReady(m);
+ if(m.type==='gameImport')pc.gameProgress(m);
  if(m.type==='dexImport'){if(m.species&&pack&&!pack.sprites.some(s=>s.id===m.species.id))pack.sprites.push(m.species);pc.imported(m);}
 });
 let drag:{x:number;y:number;px:number;py:number}|undefined,moved=false;
