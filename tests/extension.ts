@@ -11,6 +11,10 @@ export async function run(){
   const webDeadline=Date.now()+10000;
   while(!api.ready()&&Date.now()<webDeadline)await new Promise(r=>setTimeout(r,100));
   assert.ok(api.ready(),'Webview JavaScript failed to initialize');
+  const autoDeadline=Date.now()+8000;
+  while(!api.snapshot().some((a:any)=>a.provider==='codex'&&a.attached)&&Date.now()<autoDeadline)await new Promise(r=>setTimeout(r,100));
+  const automatic=api.snapshot().find((a:any)=>a.provider==='codex'&&a.attached);
+  assert.ok(automatic,'Local chat did not automatically connect');assert.equal(api.sessions.membership.get(automatic.id),'workspace');
   // Shell integration arrives asynchronously. Verify actual start/end through a harmless command.
   const deadline=Date.now()+15000;
   while(!t.shellIntegration&&Date.now()<deadline)await new Promise(r=>setTimeout(r,200));
@@ -34,5 +38,5 @@ export async function run(){
  await new Promise(r=>setTimeout(r,400));
  assert.ok(api.snapshot().some((a:any)=>a.provider==='terminal'&&a.ended));
  assert.equal(api.sessions.links.size,0);assert.equal(api.snapshot().find((a:any)=>a.id==='codex:probe').ended,false);
- console.log('PMD extension: real terminal lifecycle, shell command, webview and candidate routing passed.');
+ console.log('PMD extension: automatic transcript attachment, real terminal lifecycle, shell command, webview and candidate routing passed.');
 }

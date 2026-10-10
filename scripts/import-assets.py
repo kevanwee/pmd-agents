@@ -87,10 +87,18 @@ mapfile=source/"public/pmd/thunder-meadow.png"
 if not mapfile.exists(): raise SystemExit("Supply --voracity with the existing local Voracity checkout")
 save("maps/thunder-meadow.png",mapfile.read_bytes(),"Voracity public/pmd/thunder-meadow.png; Mystery Dungeon Wiki, original game artwork")
 manifest["maps"].append({"id":"meadow","name":"Thunder Meadow","subtitle":"Guild training ground","file":"maps/thunder-meadow.png","width":456,"height":335,"credit":"Pokémon Mystery Dungeon: Red / Blue Rescue Team · game artwork; local Voracity reference, Wiki attribution; ripper not verified"})
+forest=source/"public/eevee-base"
+forest_source=json.loads((forest/"sources.json").read_text(encoding="utf-8"))
+save("maps/transform-forest.png",(forest/"background.png").read_bytes(),forest_source["backgroundUrl"])
+save("maps/forest-stone.png",(forest/"stone-frames.png").read_bytes(),forest_source["rockFramesUrl"])
+records[-1]["changes"]="Existing Voracity crops of 32 original rock poses from JPEG mirror; not lossless source pixels."
+save("sources/transform-forest.json",(forest/"sources.json").read_bytes(),forest_source["originalListing"])
+manifest["maps"].append({"id":"forest","name":"Transform Forest","subtitle":"Animated evolution stone","file":"maps/transform-forest.png","width":480,"height":312,"credit":"Pokémon Mystery Dungeon: Red / Blue Rescue Team · ripper Toastypk · Pamtre Berry mirror / Taliax; original game artwork",
+ "layers":[{"file":"maps/forest-stone.png","x":209,"y":177,"w":54,"h":39,"frames":32,"frameMs":120,"credit":"Toastypk · 32 rock poses from Pamtre Berry JPEG mirror; 120ms playback chosen for this project, original game timing unavailable."}]})
 save("PixelifySans.woff2",(source/"public/fonts/PixelifySans.woff2").read_bytes(),"Voracity / Pixelify Sans Project Authors")
 save("PixelifySans-OFL.txt",(source/"public/fonts/PixelifySans-OFL.txt").read_bytes(),"https://github.com/eifetx/Pixelify-Sans")
 get("LICENSE.md")
 manifest["files"]=records
 (out/"manifest.json.tmp").write_text(json.dumps(manifest,indent=2)+"\n",encoding="utf-8")
 (out/"manifest.json.tmp").replace(out/"manifest.json")
-print(f"Imported {len(manifest['sprites'])} Pokémon, a Substitute dummy, one map and {len(records)} source receipts into {out}")
+print(f"Imported {len(manifest['sprites'])} Pokémon, a Substitute dummy, two maps and {len(records)} source receipts into {out}")

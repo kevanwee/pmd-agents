@@ -40,3 +40,8 @@ Acceptance: every bundled asset resolves to a provenance record; selected Pokém
 ## Expanded local pack, 0.2.0
 
 The catalog now includes Bulbasaur, Ivysaur, Venusaur, Charmander, Charmeleon, Charizard, Squirtle, Wartortle and Blastoise, alongside the original three. Substitute is imported from `sprite/0000/0001` at the same pinned revision; its records name CHUNSOFT and JFain. The original sheets are unchanged. Canvas projectile and impact particles are original code-generated visuals, not ripped move-effect sheets. Exact per-asset sources, contributor records and hashes remain in the local manifest; the in-guild Credits view includes the expanded roster and dummy. README lists all resolved contributor names and preserves the two upstream Discord-only identifiers.
+
+
+## Animated scenery and public source, 0.3.0
+
+The owner authorized public repository visibility on 10 October 2026. Source artwork remains excluded from Git and VSIX; curated demo screenshots remain attributed. Transform Forest imports Voracity’s unmodified background, existing 32-pose stone sheet and source receipt. Original ripper: Toastypk. Mirror: [Pamtre Berry / Taliax](https://pamtre-berry.neocities.org/articles/friendareas). The mirror’s stone poses are JPEG-derived; the importer preserves that limitation and does not call them lossless. Playback at 120ms per pose is this project’s chosen timing because original timing was not supplied. Thunder Meadow breeze lines and navigation polygons are original implementation work, not ripped game weather or collision data.

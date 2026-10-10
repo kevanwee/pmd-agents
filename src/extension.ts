@@ -4,6 +4,7 @@ import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {existsSync} from 'node:fs';
 import {type Event} from './core';
+import {WorkspaceLease} from './autoconnect';
 import {Sessions} from './sessions';
 import {startReceiver} from './receiver';
 import {prepareSetup,installSetup,type HookPlan} from './setup';
@@ -11,7 +12,11 @@ import {loadPack} from './assets';
 import type {Pack} from './world';
 import {startTranscriptWatcher,type Evidence} from './transcripts';
 export async function activate(context:vscode.ExtensionContext) {
- const sessions=new Sessions(),store=sessions.store;
+ const sessions=new Sessions(context.workspaceState.get<string[]>('excludedSessions',[])),store=sessions.store;
+ const roots=()=> (vscode.workspace.workspaceFolders||[]).map(f=>f.uri.fsPath);
+ const autoEnabled=()=>vscode.workspace.getConfiguration('pmdAgents').get<boolean>('autoConnect',true);
+ let lease:WorkspaceLease|undefined;
+ const reconcile=()=>sessions.autoConnect(autoEnabled()?lease?.eligible||new Set():new Set());
  let panel:vscode.WebviewPanel|undefined;
  let pendingSetup:{id:string;plan:HookPlan}|undefined;
  async function beginSetup(remove=false,choice?:string){
@@ -27,32 +32,37 @@ export async function activate(context:vscode.ExtensionContext) {
  const terminalNames=new Map<string,string>();
  let terminalSequence=0;
  const assignments={...context.workspaceState.get<Record<string,string>>('characters',{})};
- // VS Code workspaceState can be shared by windows on the same folder. Explicit
- // attachment is activation-local until a durable window identity is available.
+ // Automatic membership is workspace scoped; simultaneous overlapping windows pause it.
+ // Explicit links remain activation-local; exclusions and character choices persist.
  let sequence=0;
  let ready=false;
  const evidence=sessions.evidence;
+ let watcher:ReturnType<typeof startTranscriptWatcher>|undefined;
  let publishTimer:ReturnType<typeof setTimeout>|undefined;
- const snapshot=()=>({type:'snapshot',sequence:++sequence,agents:store.snapshot(),journal:sessions.journal.snapshot(),links:Object.fromEntries(sessions.links),diagnostics:watcher?.diagnostics,observationEnabled:!!watcher,evidence:Object.fromEntries(evidence),terminalNames:Object.fromEntries(terminalNames),assignments});
+ const snapshot=()=>({type:'snapshot',autoConnect:autoEnabled(),autoState:lease?.state,membership:Object.fromEntries(sessions.membership),scene:context.workspaceState.get<string>('scene','forest'),sequence:++sequence,agents:store.snapshot(),journal:sessions.journal.snapshot(),links:Object.fromEntries(sessions.links),diagnostics:watcher?.diagnostics,observationEnabled:!!watcher,evidence:Object.fromEntries(evidence),terminalNames:Object.fromEntries(terminalNames),assignments});
  const publish=()=>{if(!publishTimer)publishTimer=setTimeout(()=>{publishTimer=undefined;if(panel)void panel.webview.postMessage(snapshot());},80);};
  const receive=(e:Event,direct:boolean,source:Evidence={source:e.provider==='terminal'?'terminal':'hook'})=>{
-  sessions.receive(e,direct,source);
+  sessions.receive(e,direct,source);reconcile();
   publish();
  };
  const registry=process.env.PMD_AGENTS_REGISTRY||join(homedir(),'.pmd-agents','instances');
  const receiver=await startReceiver(registry,receive);
+ lease=new WorkspaceLease(join(registry,'workspaces'),receiver.registration.id);
+ await lease.refresh(roots());
+ const renew=async()=>{await lease?.refresh(roots());reconcile();publish();};
+ const leaseTimer=setInterval(()=>void renew(),4000);
+ context.subscriptions.push({dispose(){clearInterval(leaseTimer);void lease?.dispose();}});
  context.environmentVariableCollection.replace('PMD_AGENTS_INSTANCE',receiver.registration.id);
  context.environmentVariableCollection.description='Associate provider observer events with this VS Code window.';
  context.subscriptions.push({dispose(){context.environmentVariableCollection.clear();void receiver.dispose();}});
- let watcher:ReturnType<typeof startTranscriptWatcher>|undefined;
  const observe=()=>{
   watcher?.dispose();watcher=undefined;sessions.pauseTranscripts();
   if(vscode.workspace.getConfiguration('pmdAgents').get<boolean>('observeLocalChats',true))
-   watcher=startTranscriptWatcher((vscode.workspace.workspaceFolders||[]).map(f=>f.uri.fsPath),(event,source)=>receive(event,false,source),{onState:(id,state)=>{sessions.mark(id,state);publish();},onScan:publish});
+   watcher=startTranscriptWatcher(roots(),(event,source)=>receive(event,false,source),{onState:(id,state)=>{sessions.mark(id,state);publish();},onScan:()=>{reconcile();publish();}});
   publish();
  };
  observe();
- context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(observe),vscode.workspace.onDidChangeConfiguration(e=>{if(e.affectsConfiguration('pmdAgents.observeLocalChats'))observe();}),{dispose(){watcher?.dispose();clearTimeout(publishTimer);}});
+ context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(()=>{lease?.eligible.clear();reconcile();observe();void renew();}),vscode.workspace.onDidChangeConfiguration(e=>{if(e.affectsConfiguration('pmdAgents.observeLocalChats'))observe();if(e.affectsConfiguration('pmdAgents.autoConnect')){reconcile();publish();}}),{dispose(){watcher?.dispose();clearTimeout(publishTimer);}});
  const emit=(session:string,kind:Event['kind'],extra:Partial<Event>={})=>receive({v:1,id:randomUUID(),session,provider:'terminal',kind,at:Date.now(),...extra},true);
  function addTerminal(t:vscode.Terminal) {
   if(terminals.has(t))return terminals.get(t)!;
@@ -99,11 +109,13 @@ export async function activate(context:vscode.ExtensionContext) {
     if(!msg||typeof msg!=='object')return;
     if(msg.type==='ready'){ready=true;publish();if(pendingSetup){const {id,plan}=pendingSetup;void webview.postMessage({type:'hookSetup',id,provider:plan.provider,remove:plan.remove,file:plan.file,preview:plan.preview,changed:plan.changed});}}
     if(msg.type==='attach'&&typeof msg.id==='string'&&store.agents.has(msg.id)){
-     sessions.attach(msg.id);
+     sessions.attach(msg.id);await context.workspaceState.update('excludedSessions',sessions.exclusions());
      publish();
     }
-    if(msg.type==='detach'&&typeof msg.id==='string'){sessions.detach(msg.id);publish();}
+    if(msg.type==='detach'&&typeof msg.id==='string'){sessions.detach(msg.id);await context.workspaceState.update('excludedSessions',sessions.exclusions());publish();}
     if(msg.type==='link'&&typeof msg.id==='string'&&typeof msg.terminal==='string'){sessions.link(msg.id,msg.terminal);publish();}
+    if(msg.type==='scene'&&typeof msg.id==='string'&&pack?.maps.some(m=>m.id===msg.id)){await context.workspaceState.update('scene',msg.id);}
+    if(msg.type==='autoConnect'&&typeof msg.enabled==='boolean'){await vscode.workspace.getConfiguration('pmdAgents').update('autoConnect',msg.enabled,vscode.ConfigurationTarget.Workspace);reconcile();publish();}
     if(msg.type==='rescan')await watcher?.rescan();
     if(msg.type==='character'&&typeof msg.id==='string'&&store.agents.has(msg.id)&&pack?.sprites.some(s=>s.id===msg.species)){
      assignments[msg.id]=msg.species;await context.workspaceState.update('characters',assignments);publish();

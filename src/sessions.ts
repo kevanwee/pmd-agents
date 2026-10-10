@@ -8,12 +8,25 @@ export class Sessions {
  readonly evidence=new Map<string,Evidence>();
  readonly links=new Map<string,string>();
  readonly journal=new ActivityJournal();
+ readonly membership=new Map<string,'window'|'manual'|'workspace'>();
  private excluded=new Set<string>();
  private hookAt=new Map<string,number>();
+ constructor(excluded:string[]=[]){this.excluded=new Set(excluded.slice(-128));}
+ exclusions(){return [...this.excluded].slice(-128);}
+ autoConnect(eligible:Set<string>){
+  for(const a of this.store.agents.values()){
+   const source=this.evidence.get(a.id),allowed=!!source?.workspace&&eligible.has(source.workspace)&&!a.ended&&!this.excluded.has(a.id);
+   if(allowed&&source?.connection==='observing'&&!a.attached){this.store.attach(a.id);this.membership.set(a.id,'workspace');}
+   if(!allowed&&this.membership.get(a.id)==='workspace'){this.store.detach(a.id);this.membership.delete(a.id);this.links.delete(a.id);}
+  }
+ }
 
  receive(event:Event,direct:boolean,source:Evidence,now=Date.now()) {
   if(this.store.hasSeen(event.id))return;
   const previous=this.evidence.get(event.session),lastHook=this.hookAt.get(event.session);
+  // Stronger hook activity must not prevent a verified transcript parser from
+  // supplying workspace eligibility for automatic connection.
+  if(source.workspace&&previous&&!previous.workspace)this.evidence.set(event.session,{...previous,workspace:source.workspace});
   if(source.source==='transcript'&&lastHook!==undefined){
    // Silence alone is insufficient: recovery also requires a newer transcript event.
    if(now-lastHook<120000||event.at<=lastHook||now-event.at>120000)return;
@@ -33,7 +46,9 @@ export class Sessions {
   const accepted=this.store.apply(event,!this.excluded.has(event.session)&&(direct||!!parentAttached));
   if(this.excluded.has(event.session))this.store.detach(event.session);
   if(accepted){
-   this.evidence.set(event.session,{...source,connection:'observing'});
+   this.evidence.set(event.session,{...source,workspace:source.workspace||previous?.workspace||(event.parent?this.evidence.get(event.parent)?.workspace:undefined),connection:'observing'});
+   if(direct&&!this.excluded.has(event.session))this.membership.set(event.session,'window');
+   else if(parentAttached&&!this.membership.has(event.session))this.membership.set(event.session,this.membership.get(event.parent!)||'window');
    this.journal.record(event,source.source);
   }
   this.prune();
@@ -41,12 +56,15 @@ export class Sessions {
  attach(id:string){
   const a=this.store.agents.get(id);if(!a||a.ended)return;
   this.excluded.delete(id);this.store.attach(id);
-  for(const child of this.store.agents.values())if(child.parent===id&&!this.excluded.has(child.id))this.store.attach(child.id);
+  this.membership.set(id,'manual');
+  for(const child of this.store.agents.values())if(child.parent===id&&!this.excluded.has(child.id)){this.store.attach(child.id);this.membership.set(child.id,'manual');}
  }
  detach(id:string){
   if(!this.store.agents.has(id))return;
   this.excluded.add(id);this.store.detach(id);this.links.delete(id);
-  for(const child of this.store.agents.values())if(child.parent===id){this.excluded.add(child.id);this.store.detach(child.id);this.links.delete(child.id);}
+  this.membership.delete(id);
+  for(const child of this.store.agents.values())if(child.parent===id){this.excluded.add(child.id);this.store.detach(child.id);this.links.delete(child.id);this.membership.delete(child.id);}
+  while(this.excluded.size>128)this.excluded.delete(this.excluded.values().next().value!);
   for(const [agent,terminal] of this.links)if(terminal===id)this.links.delete(agent);
  }
  link(id:string,terminal:string){
@@ -63,7 +81,7 @@ export class Sessions {
  pauseTranscripts(){for(const [id,e] of this.evidence)if(e.source==='transcript')this.mark(id,'paused');}
  private prune(){
   this.journal.prune(new Set(this.store.agents.keys()));
-  for(const id of this.evidence.keys())if(!this.store.agents.has(id)){this.evidence.delete(id);this.hookAt.delete(id);this.excluded.delete(id);}
+  for(const id of this.evidence.keys())if(!this.store.agents.has(id)){this.evidence.delete(id);this.hookAt.delete(id);this.membership.delete(id);}
   for(const [id,terminal] of this.links){
    const a=this.store.agents.get(id),t=this.store.agents.get(terminal);
    if(!a?.attached||a.ended||!t?.attached||t.ended)this.links.delete(id);

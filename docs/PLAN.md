@@ -269,3 +269,8 @@ The request that produced this document authorizes archive and planning. This br
 ## 10 October 2026 expansion checkpoint
 
 The owner requested Substitute training and all Gen 1 starter evolution lines. Version 0.2.0 delivers this local visual increment with twelve selectable Pokémon, native attack/ranged cycles and attributed Substitute sheets. The hook setup correction replaces the untitled JSON preview with a guided in-guild installer. Bounded discovery now finds resumed older Codex logs. See IMPLEMENTATION.md for evidence; remaining native-provider and persistence gates above are still open. Further Pokédex imports use the catalog and the same geometry, timing and provenance validation.
+
+
+## 10 October 2026 usability checkpoint
+
+Version 0.3.0 implements map selection, animated Transform Forest scenery, expanded Thunder Meadow geometry, bounded route finding, longer exploration circuits, camera zoom/drag and persistent map preference. The owner explicitly requested automatic detection and public visibility. Workspace auto mode is now a distinct, labelled scope: matching supported recent chats reconnect automatically, but folder equality is not presented as native-window proof. A hash-only heartbeat registry suspends automatic claims for overlapping guild windows. Exact-window manual binding restoration and full process reconciliation remain future work. The repository is public by explicit authorization.

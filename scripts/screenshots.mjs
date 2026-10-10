@@ -22,5 +22,7 @@ try{
  }
  await page.locator('.team-row').filter({hasText:'Charizard'}).click();
  await page.waitForTimeout(1400);await page.screenshot({path:'docs/screenshots/kanto.png'});
- console.log('Captured four labelled demo screenshots without real session data.');
+ await page.getByRole('combobox',{name:'Friend area'}).selectOption('meadow');await page.getByRole('combobox',{name:'Friend area'}).blur();
+ await page.getByRole('button',{name:'Walkable area',exact:true}).click();await page.waitForTimeout(1500);await page.screenshot({path:'docs/screenshots/meadow-routes.png'});
+ console.log('Captured five labelled demo screenshots without real session data.');
 }finally{await browser.close();preview.close();}

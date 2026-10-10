@@ -2,15 +2,15 @@
 
 **Your coding agents, as a Pokémon Mystery Dungeon exploration team.**
 
-PMD Agents is a local VS Code extension inspired by [Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents). Codex chats, Claude Code sessions and terminal jobs appear as Pokémon in a PMD training ground: training against Substitute while working, scouting while reading, and stopping when they need your attention.
+PMD Agents is a local VS Code extension inspired by [Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents). Codex chats, Claude Code sessions and terminal jobs appear as Pokémon in selectable PMD Friend Areas: training against Substitute while working, scouting while reading, and stopping when they need your attention.
 
 [![Checks](https://github.com/kevanwee/pmd-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/kevanwee/pmd-agents/actions/workflows/ci.yml)
 ![Development](https://img.shields.io/badge/status-local%20development-e5c77d)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.109%2B-007acc)
 
-> **Development build 0.2.0.** Terminal tracking and live Codex transcript observation are verified locally. Native Claude records have been replayed successfully; live Claude chat tracking still needs validation. This is an unofficial, non-commercial fan project.
+> **Development build 0.3.0.** Terminal tracking and live Codex transcript observation are verified locally. Native Claude records have been replayed successfully; live Claude chat tracking still needs validation. This is an unofficial, non-commercial fan project.
 
-![PMD Agents showing Eevee training, Riolu scouting and Ceruledge waiting for approval in Thunder Meadow](docs/screenshots/guild.png)
+![PMD Agents showing Eevee training, Riolu scouting and Ceruledge waiting for approval in Transform Forest](docs/screenshots/guild.png)
 
 *Screenshots use explicitly simulated sessions. They demonstrate the UI and animations, not live provider coverage.*
 
@@ -18,6 +18,7 @@ PMD Agents is a local VS Code extension inspired by [Pixel Agents](https://githu
 
 - **Observes your existing workflow.** Keep using native Codex and Claude Code chats and VS Code terminals. PMD Agents is an observer, not a replacement chat client.
 - **Uses authentic PMD animations.** Directional sheets, native frame durations, portraits and shadow anchors; no four-frame sprite assumptions.
+- **Reconnects automatically.** Supported recent workspace chats join without Scan or Add. Overlapping guild windows pause automatic attachment instead of silently claiming the same chat.
 - **Makes activity visible.** Working, editing and command-running sessions practise attacks and ranged moves against Substitute. Attention stops training immediately.
 - **Keeps session identity stable.** Teammates joining or leaving does not reshuffle existing Pokémon. Extra sessions use additional clearings.
 - **Shows its evidence.** An Activity journal lists observed events, timestamps and sources. Missing evidence becomes uncertainty, never invented success.
@@ -64,16 +65,16 @@ npm run package
 
 In VS Code:
 
-1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.2.0.vsix`.
+1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.3.0.vsix`.
 2. Run **Developer: Reload Window**, then **PMD Agents: Open Guild**.
 3. Choose a local artwork pack under **Connections → Choose asset pack**.
-4. Attach the intended chat under **Connections**. A folder match alone does not prove that a chat belongs to this window.
+4. Supported recent chats from your workspace connect automatically. **Connections → Auto-connect** controls this. If another guild window shares the same folders, choose the intended session manually.
 
 The extension can observe sessions without artwork; the scene needs a complete local pack. It checks development `assets/local`, then `~/.pmd-agents/assets`, or the configured `pmdAgents.assetPath`.
 
 ### Import artwork
 
-Source sheets and game maps are **not included in Git or the VSIX**. The current importer downloads pinned SpriteCollab sheets and reads the Thunder Meadow map and Pixelify Sans font from a local Voracity checkout. Without those local map/font inputs, obtain a compatible pack first; cloning this repository alone does not provide them.
+Source sheets and game maps are **not included in Git or the VSIX**. The current importer downloads pinned SpriteCollab sheets and reads the Thunder Meadow and Transform Forest maps, stone animation and Pixelify Sans font from a local Voracity checkout. Without those local map/font inputs, obtain a compatible pack first; cloning this repository alone does not provide them.
 
 ```powershell
 python -m pip install Pillow
@@ -86,7 +87,7 @@ The importer writes `assets/local/manifest.json`, original credit records and fi
 
 | Source | What works today | Practical limit |
 | --- | --- | --- |
-| Codex native VS Code chat | Live transcript observation verified on 0.162.0-alpha.2; hook adapter available | Explicit attach; native hook/approval coverage still needs validation |
+| Codex native VS Code chat | Live transcript observation verified on 0.162.0-alpha.2; hook adapter available | Workspace auto-connect; native hook/approval coverage still needs validation |
 | Claude native VS Code chat | Actual 2.1.289 records replayed; 2.1.292 schema inspected | A live native chat remains unverified |
 | Claude CLI | Real startup hook received; lifecycle adapter implemented | Full live-turn coverage remains unverified |
 | VS Code terminal | Open/close, shell command start/end and exit result verified | Without shell integration: terminal presence only |
@@ -95,15 +96,34 @@ The importer writes `assets/local/manifest.json`, original credit records and fi
 
 **Connections → Connect Codex / Connect Claude → Install hooks** shows the destination and writes the observer configuration for you. No copying or saving JSON is required. Unrelated settings are preserved, changed files are backed up, and **PMD Agents: Remove Provider Hooks** removes only this observer. Codex requires its own `/hooks` trust review. PMD Agents never grants provider approvals.
 
-Use **Manage guild** to link a terminal-launched agent to its terminal. Native panel chats should stay separate from unrelated terminals. Attachments and links currently last for the extension activation; reattach after a reload. Character preferences are saved separately.
+Use **Manage guild** to link a terminal-launched agent to its terminal. Native panel chats should stay separate from unrelated terminals. Workspace auto mode reconnects qualifying chats after reload; exclusions, Pokémon choices and map choice are saved. Manual-only attachments and terminal links still last for the extension activation.
+
+### Maps and movement
+
+Choose the **Friend area** dropdown above the scene:
+
+- **Transform Forest:** a 32-frame evolution-stone layer, sourced through Toastypk’s rip and the [Pamtre Berry mirror](https://pamtre-berry.neocities.org/articles/friendareas). The mirror frames have JPEG artefacts; playback is 120 ms per pose because original game timing was not supplied.
+- **Thunder Meadow:** a wider authored walkable area, a tighter tree obstacle and original ambient breeze effects. This does not claim to reproduce the original game’s weather animation.
+
+Pokémon now find routes around obstacles across the clearing, rather than moving 14 pixels either side of a station. Active workers alternate training and exploration; readers scout and recent idle teammates wander before resting. **Walkable area** shows the authored boundaries and routes. These are measured from the artwork, not extracted game collision maps. **Zoom in** supports dragging; **Fit map** restores the whole scene. Quiet and reduced motion stop environment animation as well as Pokémon motion.
+
+![Thunder Meadow with expanded ground, a tree-shaped obstacle and an exploration route; simulated sessions](docs/screenshots/meadow-routes.png)
+
+### Automatic connection and scope
+
+Automatic discovery runs in the background; the Scan button is only a manual refresh. Supported files modified within 12 hours qualify. Older Codex creation-date folders are checked in batches, so resumed historical threads may take several scans to appear.
+
+**Workspace auto** intentionally includes local chats matching this workspace. It does not prove which native editor window or external terminal owns each chat. A local heartbeat registry, containing hashed folder identities, detects overlapping guild windows and pauses automatic attachment for those folders. Explicitly window-bound terminals/hooks still connect directly; unscoped hook events remain candidates. You can switch automatic attachment off or remove individual sessions, which stay excluded after reload.
+
+In **Activity**, use the source picker to switch between Codex, Claude and terminal journals. A terminal’s shell events are separate from a native chat’s events. Newly discovered chats become the default selection unless you have already chosen a teammate.
 
 ### Read the world
 
 | Observed state | Pokémon behaviour |
 | --- | --- |
-| Working / thinking / responding | Attack and ranged animation cycles against Substitute |
-| Reading / searching | Short patrol |
-| Editing or running a command | Train against Substitute |
+| Working / thinking / responding | Train against Substitute, then explore between bouts |
+| Reading / searching | Routes across the clearing |
+| Editing or running a command | Training and exploration circuit |
 | Approval or input requested | Stop with an attention bubble |
 | Turn finished | Rest, then sleep |
 | Stale, paused or unavailable observation | Stop and show uncertainty |
@@ -134,10 +154,13 @@ The host hashes provider identities and discards prompts, arguments, outputs and
 flowchart TD
     E[Observed session] --> B{Verified window token?}
     B -- Yes --> G[Current-window guild]
-    B -- No --> U[Unassigned candidate]
+    B -- No --> C{Auto mode and one eligible workspace window?}
+    C -- Yes --> W[Workspace-scoped guild membership]
+    C -- No --> U[Unassigned candidate]
     U --> A{User attaches session?}
     A -- Yes --> G
     A -- No --> U
+    W --> P
     G --> P{Fresh evidence?}
     P -- Yes --> M[Animate observed activity]
     P -- No --> Q[Show uncertainty and stop movement]
@@ -166,9 +189,9 @@ npm run package
 - `npm run preview` opens a browser demo at `http://127.0.0.1:5188`; it is not a live browser monitor.
 - `npm run screenshots` regenerates the committed, labelled demo screenshots. Real session screenshots, logs and probe exports stay in ignored `artifacts`.
 
-GitHub Actions currently cannot start jobs because of an account billing/spending restriction. Local checks below have passed; no billing settings were changed.
+The repository is public. Earlier private-repository Actions jobs were blocked by an account billing/spending restriction; current workflow status is shown by the Checks badge. No billing settings were changed.
 
-The local build has **36 passing focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
+The local build has **41 passing focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
 
 ## Roadmap
 
@@ -179,7 +202,9 @@ The local build has **36 passing focused tests**, plus browser and VS Code integ
 - [ ] Live Claude native-chat and both providers' approval/subagent validation
 - [x] Bounded historical-folder discovery for resumed Codex sessions
 - [x] Substitute training and all nine Kanto starter stages
-- [ ] Window-safe attachment restoration and process reconciliation
+- [x] Workspace automatic reconnection, persistent exclusions and overlapping-window checks
+- [x] Animated Transform Forest, expanded meadow navigation, map selection and zoom
+- [ ] Durable exact-window manual attachment restoration and process reconciliation
 - [ ] More verified Pokémon, maps and optional dungeon presentation
 
 The [full plan](docs/PLAN.md) separates delivered work from future proposals. [Research](docs/RESEARCH.md) records the predecessor review and archive receipt.
@@ -188,7 +213,7 @@ The [full plan](docs/PLAN.md) separates delivered work from future proposals. [R
 
 Built by **Kevan Wee**. Inspired by **Pablo De Lucca and the Pixel Agents contributors**; no Pixel Agents source code is copied in this implementation. [The Office](https://github.com/kevanwee/theoffice) is the archived predecessor; Voracity supplied the visual references and local asset-pipeline lessons.
 
-Sprite/portrait records credit **CHUNSOFT, baronessfaron, Fearless-Quit, Top_Kec, JFain, 0palite, Emboarger, Emmuffin, Grimlin, G〜 and bwappi**, plus contributors recorded upstream as Discord IDs **199989579682414592** and **276175146304405514**, sourced through [PMD SpriteCollab](https://github.com/PMDCollab/SpriteCollab). Original game sprites and individual fan-art terms are distinguished in the pack; a repository-wide fan-art licence is not assumed to cover every asset. **Pixelify Sans Project Authors** provide the font under SIL OFL. Thunder Meadow is a local game-map reference; its original ripper remains unresolved. Screenshots contain rendered third-party artwork and retain those attributions.
+Sprite/portrait records credit **CHUNSOFT, baronessfaron, Fearless-Quit, Top_Kec, JFain, 0palite, Emboarger, Emmuffin, Grimlin, G〜 and bwappi**, plus contributors recorded upstream as Discord IDs **199989579682414592** and **276175146304405514**, sourced through [PMD SpriteCollab](https://github.com/PMDCollab/SpriteCollab). Original game sprites and individual fan-art terms are distinguished in the pack; a repository-wide fan-art licence is not assumed to cover every asset. **Pixelify Sans Project Authors** provide the font under SIL OFL. Transform Forest and its stone frames credit **Toastypk**, with the **Pamtre Berry / Taliax** mirror and original source receipts retained locally. Thunder Meadow is a local game-map reference; its original ripper remains unresolved. Screenshots contain rendered third-party artwork and retain those attributions.
 
 Original project code is currently **all rights reserved**; see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md). This repository does not grant redistribution rights to third-party artwork. Source sheets and game maps remain outside the repository and installable package.
 

@@ -1,12 +1,13 @@
 import {readFile,realpath,stat} from 'node:fs/promises';
 import {resolve,sep} from 'node:path';
 import type {Pack,Animation} from './world';
+import {terrains} from './navigation';
 export async function loadPack(directory:string):Promise<Pack> {
  const root=await realpath(directory);
  const manifestPath=resolve(root,'manifest.json');
  if((await stat(manifestPath)).size>2000000)throw Error('Manifest too large');
  const p=JSON.parse(await readFile(manifestPath,'utf8')) as Pack;
- if(p.version!==1||!Array.isArray(p.sprites)||!p.sprites.length||p.sprites.length>32||!Array.isArray(p.maps)||p.maps.length!==1)throw Error('Unsupported asset pack');
+ if(p.version!==1||!Array.isArray(p.sprites)||!p.sprites.length||p.sprites.length>32||!Array.isArray(p.maps)||!p.maps.length||p.maps.length>2)throw Error('Unsupported asset pack');
  async function file(name:string) {
   if(typeof name!=='string'||!/^[-a-zA-Z0-9_./]+$/.test(name))throw Error('Invalid asset path');
   const path=await realpath(resolve(root,name));
@@ -29,9 +30,18 @@ export async function loadPack(directory:string):Promise<Pack> {
    if(b.length<24||b.toString('hex',0,8)!=='89504e470d0a1a0a'||b.readUInt32BE(16)!==a.w*a.durations.length||b.readUInt32BE(20)!==a.h*a.rows)throw Error('Sheet geometry mismatch');
   }
  }
- const map=p.maps[0];
- if(map.id!=='meadow'||map.width!==456||map.height!==335||typeof map.credit!=='string')throw Error('This version supports the measured Thunder Meadow geometry only');
- const b=await file(map.file);if(b.readUInt32BE(16)!==456||b.readUInt32BE(20)!==335)throw Error('Map geometry mismatch');
+ const maps=new Set<string>();
+ for(const map of p.maps){
+  const terrain=terrains[map.id];
+  if(!terrain||maps.has(map.id)||map.width!==terrain.width||map.height!==terrain.height||typeof map.credit!=='string')throw Error('Unsupported map geometry');
+  maps.add(map.id);
+  const b=await file(map.file);if(b.length<24||b.toString('hex',0,8)!=='89504e470d0a1a0a'||b.readUInt32BE(16)!==map.width||b.readUInt32BE(20)!==map.height)throw Error('Map geometry mismatch');
+  if(map.layers&&(!Array.isArray(map.layers)||map.layers.length>8))throw Error('Too many map layers');
+  for(const layer of map.layers||[]){
+   if(![layer.x,layer.y,layer.w,layer.h,layer.frames,layer.frameMs].every(Number.isInteger)||layer.x<0||layer.y<0||layer.w<1||layer.h<1||layer.x+layer.w>map.width||layer.y+layer.h>map.height||layer.frames<2||layer.frames>64||layer.frameMs<50||layer.frameMs>2000||typeof layer.credit!=='string')throw Error('Invalid animated layer');
+   const sheet=await file(layer.file);if(sheet.length<24||sheet.toString('hex',0,8)!=='89504e470d0a1a0a'||sheet.readUInt32BE(16)!==layer.w*layer.frames||sheet.readUInt32BE(20)!==layer.h)throw Error('Layer geometry mismatch');
+  }
+ }
  await file('PixelifySans.woff2');
  return p;
 }

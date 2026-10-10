@@ -3,24 +3,33 @@ import {GuildStore,status,type Agent,type Event} from '../core';
 import {ActivityJournal,journalText,type JournalEntry} from '../journal';
 import {trainingAt} from '../training';
 import {Placement} from '../placement';
-import {frameAt,slots,clearPath,facing,type Pack,type Species,type Point} from '../world';
-declare global {interface Window {PMD_BOOT:{pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;unsupported:number;readErrors:number;lastScan:number;historyFolders?:number;historyChecked?:number;historyCapped?:boolean};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
+import {Navigator,terrains,segment,canStand} from '../navigation';
+import {frameAt,facing,type Pack,type Species,type Point} from '../world';
+declare global {interface Window {PMD_BOOT:{scene?:string;autoConnect?:boolean;autoState?:string;membership?:Record<string,string>;pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;unsupported:number;readErrors:number;lastScan:number;historyFolders?:number;historyChecked?:number;historyCapped?:boolean};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
 const host=window.acquireVsCodeApi?.();
 const boot=window.PMD_BOOT;
 const pack=boot.pack;
+let sceneId=host?.getState()?.scene||boot.scene||'forest';
+const scene=()=>pack?.maps.find(m=>m.id===sceneId)||pack?.maps[0];
+const terrain=()=>terrains[scene()?.id||'meadow'];
+const navigation=new Map<string,Navigator>();
+const navigator=()=>{const id=scene()?.id||'meadow';if(!navigation.has(id))navigation.set(id,new Navigator(terrain()));return navigation.get(id)!;};
+let autoConnect=boot.autoConnect??true,autoState=boot.autoState,membership=boot.membership||{};
+let worldTime=0,showPaths=false,zoom=1,pan={x:0,y:0},view={x:0,y:0,scale:1};
+
 let agents=boot.agents||[],assignments=boot.assignments||{},terminalNames=boot.terminalNames||{};
 let evidence=boot.evidence||{};
 let journal=boot.journal||{};
 let links=boot.links||{},diagnostics=boot.diagnostics,observationEnabled=boot.observationEnabled;
 const displayStatus=(a:Agent)=>a.ended?status(a):!demo&&evidence[a.id]?.connection==='paused'?'Observation paused':!demo&&evidence[a.id]?.connection==='unavailable'?'Observation unavailable':status(a);
 const sourceLabel=(a:Agent)=>{const e=evidence[a.id];return e?.source==='transcript'?'Local transcript · '+(e.client||'client')+' '+(e.version||'')+(e.partial?' · partial history':''):e?.source==='hook'?'Observer hook':'Shell integration';};
-let selected='',demo=false,quiet=host?.getState()?.quiet??false,visible=true,area=0;
+let selected='',selectedByUser=false,demo=false,quiet=host?.getState()?.quiet??false,visible=true,area=0;
 let hookSetup:{id:string;provider:string;remove?:boolean;file:string;preview:string;installing?:boolean}|undefined;
 let hookResult:{provider?:string;remove?:boolean;error?:string}|undefined,reviewOpen=false;
 let tab:'team'|'activity'|'connections'|'credits'='team';
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<header><div class="brand"><span class="guild-mark" aria-hidden="true">✦</span><div><span class="eyebrow">EXPLORATION GUILD</span><h1>PMD Agents</h1></div></div><div class="header-actions"><span id="mode" class="mode">Current window</span><button id="quiet" aria-pressed="false" title="Pause world animations">Quiet</button><button id="demo">Try demo</button></div></header>
-<main><section class="world-panel" aria-label="Guild world"><div class="scene-heading"><div><span class="eyebrow">FRIEND AREA 01</span><h2>Thunder Meadow</h2></div><span class="scene-tag">Training ground</span></div><div class="canvas-wrap"><canvas aria-label="Pokémon guild. Use the team list to select a session."></canvas><div id="empty" class="empty"></div><div class="world-tools"><span id="population"></span><button id="area" hidden>Next clearing</button></div></div><section id="details" class="dialogue" aria-label="Selected session"></section></section><aside><nav aria-label="Guild information"><button data-tab="team" aria-pressed="true">Team</button><button data-tab="activity">Activity</button><button data-tab="connections">Connections</button><button data-tab="credits">Credits</button></nav><div id="sidebar"></div></aside></main><footer><span>Unofficial, non-commercial fan project</span><button id="credits">Credits & sources</button><span id="live-status" role="status" aria-live="polite"></span></footer>`;
+<main><section class="world-panel" aria-label="Guild world"><div class="scene-heading"><div><span class="eyebrow">FRIEND AREA 01</span><h2>Thunder Meadow</h2></div><div class="scene-controls"><select id="scene" aria-label="Friend area"></select><button id="zoom">Zoom in</button><button id="paths" aria-pressed="false">Walkable area</button></div></div><div class="canvas-wrap"><canvas aria-label="Pokémon guild. Use the team list to select a session."></canvas><div id="empty" class="empty"></div><div class="world-tools"><span id="population"></span><button id="area" hidden>Next clearing</button></div></div><section id="details" class="dialogue" aria-label="Selected session"></section></section><aside><nav aria-label="Guild information"><button data-tab="team" aria-pressed="true">Team</button><button data-tab="activity">Activity</button><button data-tab="connections">Connections</button><button data-tab="credits">Credits</button></nav><div id="sidebar"></div></aside></main><footer><span>Unofficial, non-commercial fan project</span><button id="credits">Credits & sources</button><span id="live-status" role="status" aria-live="polite"></span></footer>`;
 const canvas=app.querySelector('canvas')!;
 const ctx=canvas.getContext('2d')!;
 const sidebar=app.querySelector<HTMLDivElement>('#sidebar')!;
@@ -28,7 +37,7 @@ const details=app.querySelector<HTMLDivElement>('#details')!;
 const empty=app.querySelector<HTMLDivElement>('#empty')!;
 const imageCache=new Map<string,HTMLImageElement>();
 const failedImages=new Set<string>();
-const actors=new Map<string,{p:Point;target:Point;slot:number;direction:number;elapsed:number;rest:number}>();
+const actors=new Map<string,{p:Point;target:Point;slot:number;direction:number;elapsed:number;rest:number;path:Point[];mode:string;walking:boolean;trip:number}>();
 const placement=new Placement();
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 let frame=0,last=0,drawCount=0;
@@ -47,8 +56,8 @@ function ensureActors(){
  const team=shown(),ids=new Set(team.map(a=>a.id));placement.sync([...ids]);for(const id of actors.keys())if(!ids.has(id))actors.delete(id);
  for(const a of team){
   const n=placement.slots.get(a.id)!;
-  const old=actors.get(a.id),p=slots[n%slots.length];
-  if(!old||old.slot!==n)actors.set(a.id,{p:{...p},target:{...p},slot:n,direction:old?.direction||0,elapsed:old?.elapsed||0,rest:0});
+  const old=actors.get(a.id),p=terrain().stations[n%6];
+  if(!old||old.slot!==n)actors.set(a.id,{p:{...p},target:{...p},slot:n,direction:old?.direction||0,elapsed:old?.elapsed||0,rest:0,path:[],mode:'',walking:false,trip:n});
  }
 }
 function focusLabel(a:Agent){return a.provider==='terminal'||links[a.id]?'Focus terminal':'Open '+label(a)+' panel';}
@@ -59,8 +68,15 @@ function render() {
  const focusKey=(document.activeElement as HTMLElement)?.dataset?.focusKey;
  const scrollTop=sidebar.scrollTop;
  const team=shown(),candidates=agents.filter(a=>!a.attached&&!a.ended);
- if(!team.some(a=>a.id===selected)&&!(tab==='activity'&&agents.some(a=>a.id===selected&&a.attached&&a.ended)))selected=team[0]?.id||'';
- app.querySelector('#mode')!.textContent=demo?'DEMO · simulated sessions':'Current window';
+ if(!selectedByUser&&team.find(a=>a.id===selected)?.provider==='terminal'){const chat=team.find(a=>a.provider!=='terminal');if(chat)selected=chat.id;}
+ if(!team.some(a=>a.id===selected)&&!(tab==='activity'&&agents.some(a=>a.id===selected&&a.attached&&a.ended)))selected=(team.find(a=>a.provider!=='terminal')||team[0])?.id||'';
+ app.querySelector('#mode')!.textContent=demo?'DEMO · simulated sessions':autoConnect?'Workspace auto':'Current window';
+ app.querySelector('.scene-heading h2')!.textContent=scene()?.name||'Exploration guild';
+ const mapSelect=app.querySelector<HTMLSelectElement>('#scene')!;
+ if(!mapSelect.options.length)for(const map of pack?.maps||[]){const option=document.createElement('option');option.value=map.id;option.textContent=map.name;mapSelect.append(option);}
+ mapSelect.value=scene()?.id||'';
+ app.querySelector('#zoom')!.textContent=zoom===1?'Zoom in':'Fit map';
+ app.querySelector('#paths')!.setAttribute('aria-pressed',String(showPaths));
  app.querySelector('#mode')!.className='mode'+(demo?' demo':'');
  app.querySelector('#demo')!.textContent=demo?'Exit demo':'Try demo';
  app.querySelector('#quiet')!.setAttribute('aria-pressed',String(quiet));
@@ -82,7 +98,7 @@ function render() {
   const body=node('div','','dialogue-body');
   body.append(node('div',label(a)+(sp?' · '+sp.name:''),'speaker'));
   body.append(node('h3',displayStatus(a)));
-  body.append(node('p',demo?'Simulated activity':sourceLabel(a)+' · last seen '+new Date(a.lastSeen).toLocaleTimeString()+(links[a.id]?' · linked to '+(terminalNames[links[a.id]]||'terminal'):'')));
+  body.append(node('p',demo?'Simulated activity':(membership[a.id]==='workspace'?'Auto-connected · ':'')+sourceLabel(a)+' · last seen '+new Date(a.lastSeen).toLocaleTimeString()+(links[a.id]?' · linked to '+(terminalNames[links[a.id]]||'terminal'):'')));
   details.append(body);
   const actions=node('div','','detail-actions');
   if(!demo&&!a.ended)actions.append(button(focusLabel(a),()=>send({type:'focus',id:a.id}),'primary'));
@@ -100,7 +116,7 @@ function render() {
   const rank=(a:Agent)=>({approval:0,input:1,error:2,none:3}[a.attention]);
   for(const member of [...team].sort((a,b)=>rank(a)-rank(b))){
    const sp=species(member);
-   const row=button('',()=>{selected=member.id;area=placement.page(member.id);render();},'team-row');
+   const row=button('',()=>{selectedByUser=true;selected=member.id;area=placement.page(member.id);render();},'team-row');
    row.dataset.focusKey='team:'+member.id;
    row.setAttribute('aria-pressed',String(selected===member.id));
    if(sp){const portrait=document.createElement('img');portrait.src=boot.assetBase+sp.portrait;portrait.alt='';row.append(portrait);}
@@ -114,8 +130,12 @@ function render() {
   if(!a)sidebar.append(node('p','Select a teammate to see its observed activity.','muted'));
   else{
    sidebar.append(node('h3',label(a)+' · '+(species(a)?.name||'Session')),node('p',displayStatus(a),'activity-status'));
+   const sourceSelect=document.createElement('select');sourceSelect.setAttribute('aria-label','Activity source');sourceSelect.dataset.focusKey='activity-source';
+   for(const member of team){const option=document.createElement('option');option.value=member.id;option.textContent=label(member)+' · '+(species(member)?.name||'Session');sourceSelect.append(option);}
+   sourceSelect.value=a.id;sourceSelect.onchange=()=>{selectedByUser=true;selected=sourceSelect.value;area=placement.page(selected);render();};sidebar.append(sourceSelect);
+   if(a.provider==='terminal')sidebar.append(node('p','Showing terminal events. Choose Codex or Claude above for chat activity.','muted'));
    const frozen=quiet||reduced.matches||a.attention!=='none'||['Status unconfirmed','Observation unavailable','Observation paused'].includes(displayStatus(a));
-   const motion=a.ended?'Left the clearing':frozen?'Movement paused':['working','editing','running'].includes(a.activity)?'Training with Substitute':a.activity==='idle'?'Resting':'Patrolling the clearing';
+   const motion=a.ended?'Left the clearing':frozen?'Movement paused':['working','editing','running'].includes(a.activity)?'Training and exploration circuit':a.activity==='idle'?'Resting':'Patrolling the clearing';
    sidebar.append(node('p',motion+' · '+Object.keys(a.tools).length+' active tools','muted'));
    if(a.parent)sidebar.append(node('p','Child of '+a.parent.slice(-6),'muted'));
    sidebar.append(node('p',demo?'Simulated activity for this demo.':'Observed events only. Chat text and commands are not retained.','muted'));
@@ -132,7 +152,10 @@ function render() {
   if(recent.length){sidebar.append(node('h3','Recently closed'));for(const ended of recent)sidebar.append(button(label(ended)+' · '+ended.id.slice(-6),()=>{selected=ended.id;render();},'recent-session'));}
  }else if(tab==='connections'){
   sidebar.append(node('div','PROVIDER CONNECTIONS','section-label'));
-  sidebar.append(node('h3','Keep your own chats'),node('p','Recent local Codex and Claude chat activity appears here automatically for supported client versions. Attach a session to bring it into your guild.','muted'));
+  sidebar.append(node('h3','Keep your own chats'),node('p','Supported local chats are discovered continuously. Workspace auto mode brings them into the guild without scanning or adding each one.','muted'));
+  const auto=button(autoConnect?'Auto-connect: on':'Auto-connect: off',()=>send({type:'autoConnect',enabled:!autoConnect}));auto.setAttribute('aria-pressed',String(autoConnect));sidebar.append(auto);
+  sidebar.append(node('p',autoState==='ambiguous'?'Another guild window shares these folders. Automatic attachment is paused for overlapping folders; choose the intended sessions below.':autoState==='unavailable'?'Checking which guild windows share this workspace…':autoConnect?'Workspace chats reconnect automatically. This includes matching local chats, not verified native-window ownership. Removed sessions stay excluded.':'Automatic attachment is off. Window-bound terminals and hooks still connect automatically.','muted'));
+  sidebar.append(node('p','Observer hooks are optional for local transcript observation. Install once for richer lifecycle signals.','muted'));
   for(const provider of ['codex','claude'])sidebar.append(button('Connect '+(provider==='codex'?'Codex':'Claude'),()=>send({type:'setup',provider}),'primary'));
   if(hookSetup){
    const card=node('section','','candidate hook-setup');card.setAttribute('aria-label','Hook installation');
@@ -165,7 +188,7 @@ function render() {
    }
   }
   sidebar.append(node('h3','Available sessions'));
-  sidebar.append(node('p','Choose which unassigned sessions belong to this window. Folder matches alone are not used to attach.','muted'));
+  sidebar.append(node('p','Choose which unassigned sessions belong to this window. Ambiguous sources still require a choice.','muted'));
   if(!candidates.length)sidebar.append(node('p','No unassigned events received yet.','muted'));
   for(const c of candidates){const card=node('div','','candidate');card.append(node('strong',label(c)+' · '+c.id.slice(-6)),node('p',displayStatus(c)+' · '+new Date(c.lastSeen).toLocaleTimeString()),node('p',sourceLabel(c)+(evidence[c.id]?.project?' · '+evidence[c.id].project:''),'muted'),button('Attach to this window',()=>send({type:'attach',id:c.id})));sidebar.append(card);}
   sidebar.append(button('Choose asset pack',()=>send({type:'assets'})));
@@ -176,7 +199,8 @@ function render() {
   const link=document.createElement('a');link.href='https://github.com/pixel-agents-hq/pixel-agents';link.textContent='Pixel Agents';sidebar.append(link);
   for(const s of [...(pack?.sprites||[]),...(pack?.dummy?[pack.dummy]:[])])sidebar.append(node('h3',s.name),node('p',[...s.artists,...(s.portraitCredits||[])].join(' · '),'credit-text'));
   sidebar.append(node('p','SpriteCollab: individual asset terms are preserved in the local pack. Original game sprites are not automatically covered by the fan-art licence.','muted'));
-  sidebar.append(node('p',pack?.maps[0].credit||'No local artwork loaded.','muted'),node('p','Pixelify Sans Project Authors · SIL OFL. Substitute: SpriteCollab source credits above. Move particles: original decorative effects.','muted'));
+  for(const map of pack?.maps||[]){sidebar.append(node('h3',map.name),node('p',map.credit,'muted'));for(const layer of map.layers||[])sidebar.append(node('p',layer.credit,'muted'));}
+  sidebar.append(node('p','Meadow breeze: original ambient animation. Map geometry is authored for this project, not extracted game collision data.','muted'),node('p','Pixelify Sans Project Authors · SIL OFL. Substitute: SpriteCollab source credits above. Move particles: original decorative effects.','muted'));
  }
  const live=team.filter(a=>a.attention!=='none').length;
  app.querySelector('#live-status')!.textContent=live?live+' session'+(live===1?'':'s')+' need attention':'';
@@ -202,11 +226,22 @@ function draw(delta:number){
  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
  ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#132022';ctx.fillRect(0,0,w,h);
  if(!pack)return;
- const map=pack.maps[0],bg=img(map.file);
- const scale=Math.max(1,Math.round(Math.min(w/map.width,h/map.height)));
- const ox=Math.round((w-map.width*scale)/2),oy=Math.round((h-map.height*scale)/2);
+ const map=scene()!,bg=img(map.file);
+ const scale=Math.min(w/map.width,h/map.height)*zoom;
+ pan.x=Math.max(-Math.max(0,(map.width*scale-w)/2),Math.min(Math.max(0,(map.width*scale-w)/2),pan.x));
+ pan.y=Math.max(-Math.max(0,(map.height*scale-h)/2),Math.min(Math.max(0,(map.height*scale-h)/2),pan.y));
+ const ox=Math.round((w-map.width*scale)/2+pan.x),oy=Math.round((h-map.height*scale)/2+pan.y);view={x:ox,y:oy,scale};
  ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.imageSmoothingEnabled=false;
  if(bg)ctx.drawImage(bg,0,0);
+ if(!quiet&&!reduced.matches)worldTime+=delta;
+ const environmentFrames=[];
+ for(const layer of map.layers||[]){const sheet=img(layer.file),f=Math.floor(worldTime/layer.frameMs)%layer.frames;environmentFrames.push(f);if(sheet)ctx.drawImage(sheet,f*layer.w,0,layer.w,layer.h,layer.x,layer.y,layer.w,layer.h);}
+ if(map.id==='meadow'){
+  // Original ambient wind, separate from the unchanged game background.
+  for(let i=0;i<7;i++){const t=(worldTime+i*1390)%9800/9800,x=60+t*330,y=151+(i*23)%145;if(canStand({x:x+8,y},terrain())){ctx.globalAlpha=Math.sin(t*Math.PI)*.24;ctx.strokeStyle='#fff6b0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+10,y-2);ctx.lineTo(x+17,y-1);ctx.stroke();}}ctx.globalAlpha=1;
+ }
+ if(showPaths){ctx.fillStyle='#70dab72b';ctx.strokeStyle='#70dab7';for(const [index,polygon] of [terrain().ground,...terrain().obstacles].entries()){ctx.beginPath();polygon.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fillStyle=index?'#e86c664d':'#70dab72b';ctx.fill();ctx.stroke();}}
+ canvas.dataset.map=map.id;canvas.dataset.environment=JSON.stringify(environmentFrames);canvas.dataset.worldTime=String(worldTime);
  const list=inClearing();
  const now=Date.now(),still=quiet||reduced.matches;
  for(const a of list){
@@ -214,35 +249,35 @@ function draw(delta:number){
   const sp=species(a);if(!sp)continue;
   actor.elapsed+=still?0:delta;
   const uncertain=['Status unconfirmed','Observation unavailable','Observation paused'].includes(displayStatus(a)),attention=a.attention!=='none'||uncertain;
-  const training=['working','editing','running'].includes(a.activity);
-  const canMove=!still&&!attention&&(a.activity==='reading'||training&&Math.hypot(actor.p.x-slots[actor.slot%slots.length].x,actor.p.y-slots[actor.slot%slots.length].y)>1);
-  const home=slots[actor.slot%slots.length];
-  if(training)actor.target={...home};
-  if(canMove){
-   if(Math.hypot(actor.p.x-actor.target.x,actor.p.y-actor.target.y)<1){
-    actor.rest+=delta;
-    if(actor.rest>650&&!training){
-     const phase=Math.floor(actor.elapsed/2400)%2;
-     const target={x:home.x+(phase?14:-14),y:home.y+(phase?-6:6)};
-     actor.target=clearPath(actor.p,target)?target:{...home};actor.rest=0;
+  const training=['working','editing','running'].includes(a.activity),home=terrain().stations[actor.slot%6];
+  const exploring=training&&(actor.elapsed+actor.slot*1100)%24000>15000;
+  const roaming=a.activity==='reading'||exploring||a.activity==='idle'&&now-a.lastSeen<45000;
+  const mode=attention?'attention':roaming?'roam':training?'train':'rest';
+  if(mode!==actor.mode){actor.path=[];actor.mode=mode;actor.rest=0;if(mode==='train')actor.path=navigator().route(actor.p,home);}
+  actor.walking=false;
+  if(!still&&!attention){
+   if(mode==='roam'&&!actor.path.length){actor.rest+=delta;if(actor.rest>700){actor.path=navigator().wander(actor.p,++actor.trip,[...actors.values()].filter(v=>v!==actor).map(v=>v.p));actor.rest=0;}}
+   if(actor.path.length){
+    const target=actor.path[0],dist=Math.hypot(target.x-actor.p.x,target.y-actor.p.y),step=Math.min(dist,delta*.032);
+    if(dist<.1){actor.path.shift();}else{
+     actor.direction=facing(actor.p,target);const next={x:actor.p.x+(target.x-actor.p.x)*step/dist,y:actor.p.y+(target.y-actor.p.y)*step/dist};
+     if(segment(actor.p,next,terrain())){actor.p=next;actor.walking=true;if(step===dist)actor.path.shift();}else actor.path=[];
     }
-   }else{
-    actor.direction=facing(actor.p,actor.target);
-    const dist=Math.hypot(actor.p.x-actor.target.x,actor.p.y-actor.target.y),step=Math.min(dist,delta*.025);
-    const next={x:actor.p.x+(actor.target.x-actor.p.x)*step/dist,y:actor.p.y+(actor.target.y-actor.p.y)*step/dist};
-    if(clearPath(actor.p,next))actor.p=next;else actor.target={...actor.p};
-   }
-  }else{actor.target={...actor.p};actor.direction=attention?0:2;}
+   }else actor.direction=training?2:actor.direction;
+  }
+  if(attention)actor.direction=0;
+  if(showPaths&&actor.path.length){ctx.strokeStyle='#fff0a8aa';ctx.beginPath();ctx.moveTo(actor.p.x,actor.p.y);for(const p of actor.path)ctx.lineTo(p.x,p.y);ctx.stroke();}
  }
+
  const trainingFrames:unknown[]=[];
  for(const a of [...list].sort((a,b)=>actors.get(a.id)!.p.y-actors.get(b.id)!.p.y)){
   const actor=actors.get(a.id)!,sp=species(a);if(!sp)continue;
   const uncertain=['Status unconfirmed','Observation unavailable','Observation paused'].includes(displayStatus(a)),attention=a.attention!=='none'||uncertain;
   const training=['working','editing','running'].includes(a.activity);
-  const home=slots[actor.slot%slots.length],atHome=Math.hypot(actor.p.x-home.x,actor.p.y-home.y)<=1;
-  const motion=trainingAt(sp,actor.elapsed),active=training&&!attention&&!still&&atHome;
+  const home=terrain().stations[actor.slot%6],atHome=Math.hypot(actor.p.x-home.x,actor.p.y-home.y)<=1;
+  const motion=trainingAt(sp,actor.elapsed),active=training&&!attention&&!still&&atHome&&actor.mode==='train';
   const attacking=active&&motion.attacking;
-  const walking=!still&&!attention&&(a.activity==='reading'||training&&!atHome);
+  const walking=!still&&!attention&&actor.walking;
   const action=attacking?motion.action:walking?'Walk':a.activity==='idle'&&!attention&&now-a.lastSeen>30000?'Sleep':'Idle';
   if(active)actor.direction=2;
   const anim=sp.animations[action],f=still||attention?0:frameAt(anim,attacking?motion.cycle:actor.elapsed),row=anim.rows===1?0:actor.direction;
@@ -275,7 +310,10 @@ function restart(){cancelAnimationFrame(frame);frame=0;last=0;draw(0);if(visible
 new ResizeObserver(()=>draw(0)).observe(canvas);
 document.addEventListener('visibilitychange',restart);reduced.addEventListener('change',restart);
 app.addEventListener('focusout',e=>{if(e.target instanceof HTMLSelectElement)setTimeout(render,0);});
-app.querySelector('#quiet')!.addEventListener('click',()=>{quiet=!quiet;host?.setState({quiet});render();restart();});
+app.querySelector('#quiet')!.addEventListener('click',()=>{quiet=!quiet;host?.setState({...host.getState(),quiet,scene:scene()?.id});render();restart();});
+app.querySelector('#scene')!.addEventListener('change',()=>{sceneId=(app.querySelector('#scene') as HTMLSelectElement).value;actors.clear();pan={x:0,y:0};worldTime=0;host?.setState({...host.getState(),quiet,scene:sceneId});send({type:'scene',id:sceneId});render();});
+app.querySelector('#zoom')!.addEventListener('click',()=>{zoom=zoom===1?1.75:1;pan={x:0,y:0};render();});
+app.querySelector('#paths')!.addEventListener('click',()=>{showPaths=!showPaths;render();});
 app.querySelector('#area')!.addEventListener('click',()=>{const pages=placement.pages();area=pages[(pages.indexOf(area)+1)%Math.max(1,pages.length)]??0;render();});
 app.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>{tab=el.getAttribute('data-tab') as typeof tab;render();}));
 app.querySelector('#credits')!.addEventListener('click',()=>{tab='credits';render();});
@@ -291,7 +329,7 @@ function demoStep(){
  agents=demoStore.snapshot();render();
 }
 app.querySelector('#demo')!.addEventListener('click',()=>{
- demo=!demo;area=0;actors.clear();placement.clear();
+ demo=!demo;selectedByUser=false;area=0;actors.clear();placement.clear();
  if(demo){saved=agents;demoStore=new GuildStore();demoJournal=new ActivityJournal();Object.assign(assignments,{'demo-codex':'eevee','demo-claude':'riolu','demo-review':'ceruledge'});demoStep();demoTimer=setInterval(()=>{
   const a=demoStore.agents.get('demo-review')!,e:Event={v:1,id:crypto.randomUUID(),session:a.id,provider:a.provider,kind:a.attention==='approval'?'input':'approval',at:Date.now()};
   if(demoStore.apply(e,true))demoJournal.record(e,'hook');agents=demoStore.snapshot();render();
@@ -301,14 +339,19 @@ window.addEventListener('message',event=>{
  const m=event.data;
  if(m.type==='hookSetup'){hookSetup=m;hookResult=undefined;tab='connections';render();}
  if(m.type==='hookResult'){hookSetup=undefined;hookResult=m;tab='connections';render();}
- if(m.type==='snapshot'){journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
+ if(m.type==='snapshot'){autoConnect=m.autoConnect??autoConnect;autoState=m.autoState;membership=m.membership||{};journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
  if(m.type==='visibility'){visible=m.visible;restart();}
 });
+let drag:{x:number;y:number;px:number;py:number}|undefined,moved=false;
+canvas.addEventListener('pointerdown',e=>{if(zoom>1){drag={x:e.clientX,y:e.clientY,px:pan.x,py:pan.y};moved=false;canvas.setPointerCapture(e.pointerId);}});
+canvas.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)>3)moved=true;pan={x:drag.px+dx*devicePixelRatio,y:drag.py+dy*devicePixelRatio};draw(0);});
+canvas.addEventListener('pointerup',()=>{drag=undefined;});canvas.addEventListener('pointercancel',()=>{drag=undefined;});
 canvas.addEventListener('click',event=>{
- const rect=canvas.getBoundingClientRect(),dpr=devicePixelRatio||1,scale=Math.max(1,Math.round(Math.min(canvas.width/456,canvas.height/335)));
- const x=((event.clientX-rect.left)*dpr-(canvas.width-456*scale)/2)/scale,y=((event.clientY-rect.top)*dpr-(canvas.height-335*scale)/2)/scale;
+ if(moved){moved=false;return;}
+ const rect=canvas.getBoundingClientRect(),dpr=devicePixelRatio||1;
+ const x=((event.clientX-rect.left)*dpr-view.x)/view.scale,y=((event.clientY-rect.top)*dpr-view.y)/view.scale;
  const hit=inClearing().find(a=>{const p=actors.get(a.id)!.p;return Math.abs(p.x-x)<16&&y<p.y+5&&y>p.y-45;});
- if(hit){selected=hit.id;render();}
+ if(hit){selectedByUser=true;selected=hit.id;render();}
 });
 render();restart();send({type:'ready'});
 // Update freshness labels without advancing simulation or inventing completions.

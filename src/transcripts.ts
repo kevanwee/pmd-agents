@@ -5,7 +5,8 @@ import {createHash} from 'node:crypto';
 import {normalize} from './provider';
 import type {Event,Provider} from './core';
 import {CodexDirectoryScan} from './discovery';
-export interface Evidence {source:'transcript'|'hook'|'terminal';version?:string;client?:string;project?:string;partial?:boolean;connection?:'observing'|'unavailable'|'paused'}
+import {workspaceKey} from './autoconnect';
+export interface Evidence {source:'transcript'|'hook'|'terminal';version?:string;client?:string;project?:string;workspace?:string;partial?:boolean;connection?:'observing'|'unavailable'|'paused'}
 export interface Metadata {provider:Provider;id:string;cwd:string;version:string;client:string}
 const hash=(s:string)=>createHash('sha256').update(s).digest('hex').slice(0,32);
 export function metadata(provider:Provider,record:any):Metadata|undefined {
@@ -138,7 +139,8 @@ export function startTranscriptWatcher(roots:string[],onEvent:(event:Event,evide
     if(disposed)return;
     selected.add(f.file);
     let parser=new TranscriptParser(m);
-    const evidence:Evidence={source:'transcript',version:m.version,client:m.client,project:basename(m.cwd),partial:f.size>1048576};
+    const root=roots.find(r=>inWorkspace(m.cwd,[r]))!;
+    const evidence:Evidence={source:'transcript',version:m.version,client:m.client,project:basename(m.cwd),workspace:workspaceKey(root),partial:f.size>1048576};
     const initial=normalize(m.provider,{session_id:m.id,hook_event_name:'SessionStart'})!;
     let emitted=false;
     const entry={tail:null as unknown as JsonlTail,id:initial.session,reset:false};

@@ -93,4 +93,22 @@ assert.ok(await page.getByRole('heading',{name:'Observer installed',exact:true})
 assert.equal(await page.getByRole('region',{name:'Hook installation'}).count(),0);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
 assert.deepEqual(errors,[]);
+// Actual map pixels animate without agents; motion settings pause both layers and sprites.
+const maps=await browser.newPage({viewport:{width:1100,height:900}});
+maps.on('pageerror',e=>errors.push(e.message));
+await maps.goto(preview.url);await maps.waitForFunction(()=>document.querySelector('canvas').dataset.map==='forest');await maps.waitForTimeout(700);
+const pixels=await maps.locator('canvas').evaluate(c=>c.toDataURL());
+await maps.waitForTimeout(380);assert.notEqual(await maps.locator('canvas').evaluate(c=>c.toDataURL()),pixels,'The stone layer must actually change pixels');
+await maps.getByRole('button',{name:'Quiet',exact:true}).click();const frozenMap=await maps.locator('canvas').getAttribute('data-environment');await maps.waitForTimeout(350);assert.equal(await maps.locator('canvas').getAttribute('data-environment'),frozenMap);
+await maps.getByRole('button',{name:'Resume motion',exact:true}).click();
+await maps.getByRole('combobox',{name:'Friend area'}).selectOption('meadow');await maps.getByRole('combobox',{name:'Friend area'}).blur();
+await maps.getByRole('button',{name:'Try demo',exact:true}).click();
+const patrolStart=JSON.parse(await maps.locator('canvas').getAttribute('data-positions')).find(a=>a.id==='demo-claude');
+await maps.waitForFunction(p=>{const a=JSON.parse(document.querySelector('canvas').dataset.positions).find(a=>a.id===p.id);return Math.hypot(a.x-p.x,a.y-p.y)>50;},patrolStart,{timeout:6000});
+await maps.getByRole('button',{name:'Walkable area',exact:true}).click();await maps.screenshot({path:'artifacts/meadow-paths.png'});
+await maps.getByRole('button',{name:'Zoom in',exact:true}).click();const canvasBox=await maps.locator('canvas').boundingBox();await maps.mouse.move(canvasBox.x+100,canvasBox.y+100);await maps.mouse.down();await maps.mouse.move(canvasBox.x+160,canvasBox.y+130);await maps.mouse.up();await maps.getByRole('button',{name:'Fit map',exact:true}).click();
+await maps.setViewportSize({width:320,height:850});assert.equal(await maps.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+await maps.emulateMedia({reducedMotion:'reduce'});await maps.waitForTimeout(100);const frozen=await maps.locator('canvas').getAttribute('data-world-time');await maps.waitForTimeout(250);assert.equal(await maps.locator('canvas').getAttribute('data-world-time'),frozen);
+await maps.getByRole('button',{name:'Activity',exact:true}).click();assert.ok(await maps.getByRole('combobox',{name:'Activity source'}).isVisible());
+assert.deepEqual(errors,[]);
 await browser.close();preview.close();console.log('Browser checks passed: motion, stable placement, journal, links, demo isolation, credits and narrow layout. Screenshots in artifacts/.');

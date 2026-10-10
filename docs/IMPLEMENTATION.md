@@ -2,6 +2,20 @@
 
 The owner authorized building after the planning pass. This branch delivers a first usable slice, not the entire roadmap.
 
+## 0.3.0: traversable maps, animated scenery and workspace auto-connect
+
+Delivered 10 October 2026. The owner reported cramped movement and requested animated map alternatives, automatic connection and public visibility. The source repository is now public; original code licensing and separate local artwork handling are unchanged.
+
+`src/navigation.ts` authors ground and obstacle polygons for Thunder Meadow and Transform Forest. The meadow replaces the oversized tree rectangle with a tighter silhouette and opens the lower clearing. An eight-pixel graph with sampled clearance on every edge finds routes around obstacles without diagonal corner cuts, then simplifies valid straight segments. Readers roam across the clearing; active workers alternate roughly 15 seconds of training with exploration, returning to their reserved station along a valid route. Slots remain stable within each map; map switches intentionally reposition actors at that map’s stations. Destination selection avoids nearby actors; full crowd collision avoidance is not implemented.
+
+Transform Forest imports the existing 32-frame stone sheet with provenance from Toastypk and the Pamtre Berry mirror. It is a real animated layer over the map; JPEG mirror artefacts and chosen 120ms timing are disclosed. Thunder Meadow has original subtle breeze lines, not a fabricated claim of native weather-frame recovery. Both maps fit the canvas, with optional zoom/drag and an authored-walkable-area overlay. Quiet/reduced motion/hidden state stop simulation. Map choice persists in workspace state.
+
+`src/autoconnect.ts` adds explicitly labelled workspace auto mode (default on). Supported recent workspace transcripts automatically become guild members and reconnect after reload. This is intentionally broader than proven native-window ownership: a folder match is eligibility within the chosen workspace scope, not proof of which chat window owns the session. Hash-only workspace leases refresh every four seconds, expire after 30 seconds and check process liveness. Overlapping root/child workspaces suspend automatic attachment at reconciliation; explicit manual and verified-window membership remain. Membership may take up to one heartbeat to reconcile after another window opens. Removed-session exclusions persist (bounded to 128); source events are never persisted. Unscoped hooks remain candidates. Transcript-derived workspace metadata can enable connection while stronger hook activity remains authoritative.
+
+The Activity tab now has a provider/session picker and explains terminal-only events. New chats take the default selection unless the user has selected a teammate. The user clarified that Codex observation was already working; no speculative parser/API change was made. A fresh local probe observed two newly written Codex events with zero read errors.
+
+Validation: 41 focused tests; actual browser pixel changes for the forest layer, greater-than-50-pixel patrol displacement, both maps, zoom/drag, reduced motion, Quiet, narrow layout and existing training/journal checks. An isolated real VS Code host automatically attached a synthetic supported transcript without Scan/Add and passed the existing terminal/webview checks. Two simultaneous lease records test same-folder and parent/child ambiguity; two interactive native-chat windows remain a manual coverage gap. Five labelled demo screenshots were refreshed. Assets remain outside Git and the VSIX.
+
 ## 0.2.0: Substitute training, Kanto roster and guided hook installation
 
 Delivered 10 October 2026. Working, editing and shell-running states now train against the authentic Substitute sprite (`sprite/0000/0001`). Reading patrols and returns to its reserved station before attacking. Native Attack/Shoot timing alternates, with head-offset projectile origins, original element-coloured particles and Substitute Hurt frames. Attention, stale observation, Quiet, reduced motion and hidden panels stop training. Cycles are cosmetic, not tool counts, damage or completion signals. Older packs retain a procedural dummy fallback.
@@ -14,7 +28,7 @@ Historical Codex discovery rotates 16 older date directories per scan (up to 366
 
 Validation: 36 focused tests, typecheck, production bundles, browser checks for generic-working impacts/projectiles, all nine starter selections, attention stops, hook installation controls, 320px layout, and the existing real VS Code terminal/webview integration. Four refreshed, labelled demo screenshots document the result. Live Claude native-chat, approval/subagent coverage and durable attachment restoration remain outstanding.
 
-The private GitHub repository is `kevanwee/pmd-agents`. Actions run 37970945659 could not start its job because of account billing/spending restrictions; local checks ran successfully. Billing was not changed.
+The repository was initially private; it became public in the 0.3.0 increment. Actions run 37970945659 could not start its job because of account billing/spending restrictions; local checks ran successfully. Billing was not changed.
 
 ## 0.1.2: stable teammates and an activity journal
 
@@ -69,7 +83,7 @@ Run `npx tsx scripts/probe-clients.ts` for the startup probes. Their saved summa
 
 The receiver binds loopback, authenticates with a random token, rejects browser Origin headers and unknown payload fields, and limits request size. There is no raw event log. Local registration files are bearer capabilities. The observer checks up to 32 registrations and exits quietly within 1.5 seconds if delivery fails.
 
-Manual attachment is activation-local: VS Code workspaceState can be shared by windows on the same folder, so restoring attachments from it risks cross-window binding. Reattach unbound chats after reload. Cosmetic character choices are saved per workspace/provider-session ID. Generic terminal identity lasts for the activation.
+Manual-only attachment is activation-local; workspace auto reconnection is described above: VS Code workspaceState can be shared by windows on the same folder, so restoring attachments from it risks cross-window binding. Reattach unbound chats after reload. Cosmetic character choices are saved per workspace/provider-session ID. Generic terminal identity lasts for the activation.
 
 The store is capped at 128 sessions and bounded event/tombstone sets. Full process reconciliation and attachment restoration across extension reload remain future work. Some provider events lack turn IDs, limiting perfect ordering across turns. Child activity without a child ID cannot be assigned merely from timing. Agent/terminal grouping is explicit; no ownership is guessed from folder or timing.
 
@@ -81,7 +95,7 @@ Source navigation opens a terminal or the provider's panel. Exact native-chat co
 
 Discovery checks the last three UTC Codex date directories, bounded batches of older folders (see 0.2.0 above), and each workspace's Claude project directory. It considers files modified within 12 hours, scans at most 64 recent candidates and tracks at most 16 matching sessions. Each initial read and polling read is capped at 1 MiB; partial history is labelled. Byte offsets remain stable across split UTF-8 reads; truncation resets parsing. Unsupported versions are skipped. Tested/inspected version families: Codex 0.153/0.159/0.162, Claude 2.1.289/2.1.292. These local formats are private and may change.
 
-Native sessions always start unbound; directory equality does not establish window ownership. Non-startup hooks take priority; fresh transcript recovery after hook silence is described above. A missing hook with no newer evidence produces stale status, not fabricated completion. Transcript-only observation does not prove approval waits, child identities or exact-chat focus. Remote hosts require logs in that extension host's filesystem.
+Native sessions initially arrive unbound; workspace auto mode can attach eligible records as described above. Directory equality does not establish native-window ownership. Non-startup hooks take priority; fresh transcript recovery after hook silence is described above. A missing hook with no newer evidence produces stale status, not fabricated completion. Transcript-only observation does not prove approval waits, child identities or exact-chat focus. Remote hosts require logs in that extension host's filesystem.
 
 The sanitized `artifacts/transcript-probe.json` records 29 tool starts, 28 tool ends, one failure and one new turn from a local Codex VS Code session, including two events written during the probe. It contains no chat text or paths. Run `npx tsx scripts/probe-transcripts.ts <workspace-directory>` to repeat.
 
@@ -93,12 +107,12 @@ Ignored `assets/local` contains the pack, source records, original credit files 
 
 Eevee and Riolu sprite records identify CHUNSOFT with Unspecified licence markers. Ceruledge identifies baronessfaron with historical terms. Portrait records also name Fearless-Quit and Top_Kec. The repository's general CC BY-NC notice is not a claim that every original game sprite is licensed fan art. Artwork is excluded from Git and the VSIX.
 
-The tree is conservatively blocked; no foreground mask is fabricated. Training dummies use imported Substitute Idle/Hurt sheets; older packs fall back to an original procedural prop. Move particles are original decorative effects. Six positions appear per clearing page; all sessions remain in the roster. Full pathfinding, map editing, NPC sparring and dungeon expeditions are not implemented.
+The tree silhouette is blocked using authored geometry; no foreground mask is fabricated. Training dummies use imported Substitute Idle/Hurt sheets; older packs fall back to an original procedural prop. Move particles are original decorative effects. Six positions appear per clearing page; all sessions remain in the roster. Bounded grid routing is implemented. Map editing, NPC sparring and dungeon expeditions are not implemented.
 
 ## Validation
 
 - TypeScript typecheck and production bundles.
-- Thirty-six focused tests cover state ordering, attention, redaction, source recovery, window membership/linking, bounded journal history, stable placement, native transcript parsing, asset integrity and local transport.
+- Forty-one focused tests cover state ordering, attention, redaction, source recovery, window membership/linking, bounded journal history, stable placement, native transcript parsing, asset integrity and local transport.
 - Playwright: demo isolation, roster, credits, paused simulation and 320px layout; desktop and narrow screenshots visually inspected.
 - Real VS Code: terminal lifecycle, shell command, webview ready and unbound hook candidate.
 - Actual CLI startup probes described above.

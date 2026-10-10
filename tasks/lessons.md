@@ -12,3 +12,9 @@
 
 - 10 October 2026: The user did not know what to do with the JSON opened by Connect hooks. Keep setup in the guild, show the destination and an explicit Install button, and explain the provider’s remaining trust step. A raw configuration preview is not a completed connection flow.
 - 10 October 2026: Working should look like PMD training: attack a Substitute dummy with native animations and visible move/hit effects, including generic thinking/output. Reading can scout. Add all nine Gen 1 starter stages now; expand the rest of the Pokédex gradually with original metadata and contributor credits.
+
+
+- 10 October 2026: The user found movement too constrained. Do not reuse Voracity’s conservative single-resident collision box and tiny station patrol as the final guild navigation. Measure the actual clearing, route around obstacles, expose walkable geometry, and import real animated scenery where available.
+- Automatic discovery and connection should handle normal use without Scan/Connect/Add on every reload. Label workspace-scoped automatic matching honestly, preserve exclusions, and pause automatic claims when guild windows overlap.
+- The user explicitly authorized making pmd-agents public. No additional visibility confirmation is required.
+- The user briefly thought Codex observation was broken, then clarified it was working. Preserve the functioning feed; make the selected journal’s provider clearer instead of diagnosing a nonexistent outage.
