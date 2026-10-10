@@ -22,7 +22,7 @@ export async function activate(context:vscode.ExtensionContext) {
  const autoAttachEnabled=()=>vscode.workspace.getConfiguration('pmdAgents').get<boolean>('autoAttach',true);
  let lease:WorkspaceLease|undefined;
  // Workspace membership first (verified scope), then auto-attach for everything else; both pause while guild windows overlap.
- const reconcile=()=>{sessions.autoConnect(autoEnabled()?lease?.eligible||new Set():new Set());sessions.autoAttach(autoAttachEnabled()&&lease?.state!=='ambiguous');};
+ const reconcile=()=>{sessions.autoConnect(autoEnabled()?lease?.eligible||new Set():new Set());sessions.autoAttach(autoAttachEnabled()&&lease?.state==='single');};
  let panel:vscode.WebviewPanel|undefined;
  let pendingSetup:{id:string;plan:HookPlan}|undefined;
  async function beginSetup(remove=false,choice?:string){
@@ -159,7 +159,8 @@ export async function activate(context:vscode.ExtensionContext) {
     }
     if(msg.type==='dexPortraits'&&pack&&Array.isArray(msg.paths)){
      const paths=msg.paths.filter((p:unknown)=>typeof p==='string'&&/^[0-9]{4}(\/[0-9]{4}){0,4}$/.test(p)).slice(0,40);
-     const result=await ensurePortraits(directory,paths,cachedFetch(directory),portraitFile);void webview.postMessage({type:'dexPortraits',...result});
+     try{const result=await ensurePortraits(directory,paths,cachedFetch(directory),portraitFile);void webview.postMessage({type:'dexPortraits',...result});}
+     catch(error){void webview.postMessage({type:'dexPortraits',failed:paths,error:error instanceof Error?error.message:'Portrait cache could not be saved.'});}
     }
     if(msg.type==='gameTypes'&&pack){
      try{types??=await loadTypes(directory);void webview.postMessage({type:'gameTypes',types});}
@@ -167,12 +168,14 @@ export async function activate(context:vscode.ExtensionContext) {
     }
     if(msg.type==='gameAssets'&&pack&&Array.isArray(msg.dexes)){
      const dexes=msg.dexes.filter((n:unknown)=>Number.isInteger(n)&&(n as number)>=1&&(n as number)<=LAST_DEX).slice(0,40) as number[];
-     const result=await ensureFiles(directory,dexes.flatMap(gameAssets),fetchUrl,'game/receipts.json');void webview.postMessage({type:'gameAssets',...result});
+     const items=dexes.flatMap(gameAssets);
+     try{const result=await ensureFiles(directory,items,fetchUrl,'game/receipts.json');void webview.postMessage({type:'gameAssets',...result});}
+     catch(error){void webview.postMessage({type:'gameAssets',failed:items.map(i=>i.key),error:error instanceof Error?error.message:'Game sprite cache could not be saved.'});}
     }
     if(msg.type==='gameImportAll'&&pack&&!gameImport){
      const items=allGameAssets(),total=items.length;let last=0;
-     gameImport=ensureFiles(directory,items,fetchUrl,'game/receipts.json',8,done=>{if(done-last>=50){last=done;void panel?.webview.postMessage({type:'gameImport',done,total});}})
-      .then(result=>{void panel?.webview.postMessage({type:'gameImport',done:total,total,failed:result.failed.length,complete:true});},()=>{void panel?.webview.postMessage({type:'gameImport',done:0,total,failed:total,complete:true});})
+     gameImport=ensureFiles(directory,items,fetchUrl,'game/receipts.json',8,done=>{if(done-last>=50){last=done;void webview.postMessage({type:'gameImport',done,total});}})
+      .then(result=>{void webview.postMessage({type:'gameImport',done:total,total,failed:result.failed.length,complete:true});},error=>{void webview.postMessage({type:'gameImport',done:0,total,failed:total,complete:true,error:error instanceof Error?error.message:'Game sprite cache could not be saved.'});})
       .finally(()=>{gameImport=undefined;});
     }
     if(msg.type==='dexImport'&&typeof msg.path==='string'&&typeof msg.id==='string'&&/^[a-z0-9-]{1,48}$/.test(msg.id)){

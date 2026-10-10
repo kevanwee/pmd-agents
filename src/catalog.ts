@@ -1,4 +1,5 @@
-import {readFile,rename,writeFile,stat} from 'node:fs/promises';
+import {atomicWrite} from './storage';
+import {readFile,stat} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {buildDex,validDex,type Dex} from './dex';
 import {fetchPinned,REV,type Fetch} from './importer';
@@ -12,7 +13,7 @@ export async function loadDex(root:string,get:Fetch=fetchPinned,refresh=false):P
  const credits=new TextDecoder().decode(await get('spritebot_credits.txt'));
  const dex=buildDex(tracker,credits,REV);
  if(!validDex(dex))throw Error('The SpriteCollab tracker could not be reduced to a catalog');
- await writeFile(path+'.tmp',JSON.stringify(dex)+'\n');await rename(path+'.tmp',path);
+ await atomicWrite(path,JSON.stringify(dex)+'\n');
  return dex;
 }
 export const trackerFetch:Fetch=rel=>fetchPinned(rel,rel==='tracker.json'?40_000_000:4_000_000);

@@ -1,6 +1,8 @@
+import {atomicWrite,mergeReceipts} from './storage';
+import {readBounded} from './download';
 import {createHash} from 'node:crypto';
-import {mkdir,readFile,rename,writeFile,stat} from 'node:fs/promises';
-import {dirname,resolve} from 'node:path';
+import {readFile,stat} from 'node:fs/promises';
+import {resolve} from 'node:path';
 import type {Receipt,Fetch} from './importer';
 /** Main-series game sprites and box icons come from PokeAPI's sprite repository, and types from PokeAPI's CSV data, both pinned. */
 export const SPRITES_REV='35fdbe9bdec8f519f882c3edc3c0185f08af4d86';
@@ -25,31 +27,29 @@ export function gameAssets(dex:number):GameAsset[] {
 export async function fetchUrl(url:string,limit=4_000_000):Promise<Uint8Array> {
  const response=await fetch(url,{signal:AbortSignal.timeout(30000)});
  if(!response.ok)throw Error('Source returned '+response.status+' for '+url);
- const bytes=new Uint8Array(await response.arrayBuffer());if(bytes.length>limit)throw Error('Source file too large: '+url);
- return bytes;
+ return readBounded(response,limit);
 }
 const sha=(b:Uint8Array)=>createHash('sha256').update(b).digest('hex');
-/** Fetch missing files into the pack with receipts; existing files are served from disk. Failures are reported, never thrown. */
+/** Fetch missing files into the pack with receipts; existing files are served from disk. Download failures are reported per file; receipt persistence failures are thrown. */
 export async function ensureFiles(root:string,items:GameAsset[],get:(url:string,limit?:number)=>Promise<Uint8Array>,receiptsFile:string,concurrency=6,onProgress?:(done:number)=>void){
  const ready:Record<string,string>={},failed:string[]=[];
- const receiptsPath=resolve(root,receiptsFile);let receipts:Receipt[]=[];
- try{receipts=JSON.parse(await readFile(receiptsPath,'utf8'));if(!Array.isArray(receipts))receipts=[];}catch{}
+ const receiptsPath=resolve(root,receiptsFile);const receipts:Receipt[]=[];
  const queue=[...items];let done=0,added=0;
  await Promise.all(Array.from({length:concurrency},async()=>{
   for(let item=queue.shift();item!==undefined;item=queue.shift()){
    const target=resolve(root,item.file);
    try{
-    if(!/^[-a-zA-Z0-9_./]+$/.test(item.file)||item.file.includes('..'))throw Error('Invalid pack path');
+    if(!/^[-a-zA-Z0-9_./]+$/.test(item.file)||item.file.includes('..')||item.file.startsWith('/'))throw Error('Invalid pack path');
     try{if((await stat(target)).isFile()){ready[item.key]=item.file;continue;}}catch{}
     const bytes=await get(item.url,item.limit||400000);
     if(bytes.length<24||Buffer.from(bytes.buffer,bytes.byteOffset,8).toString('hex')!=='89504e470d0a1a0a')throw Error('Not a PNG');
-    await mkdir(dirname(target),{recursive:true});await writeFile(target+'.tmp',bytes);await rename(target+'.tmp',target);
+    await atomicWrite(target,bytes);
     receipts.push({file:item.file,source:item.url,sha256:sha(bytes),distribution:'local-reference-only',changes:'Unmodified'});added++;ready[item.key]=item.file;
    }catch{failed.push(item.key);}
    finally{done++;onProgress?.(done);}
   }
  }));
- if(added)await writeFile(receiptsPath,JSON.stringify(receipts)+'\n').catch(()=>{});
+ if(added)await mergeReceipts(receiptsPath,receipts);
  return {ready,failed};
 }
 /** Parse PokeAPI's pokemon.csv, pokemon_types.csv and types.csv into National Dex number → type names. */
@@ -74,7 +74,7 @@ export async function loadTypes(root:string,get:(url:string,limit?:number)=>Prom
  const text=async(name:string)=>new TextDecoder().decode(await get(DATA_RAW+name,2_000_000));
  const types=parseTypes(await text('pokemon.csv'),await text('pokemon_types.csv'),await text('types.csv'));
  if(!validTypes(types)||Object.keys(types).length<1000)throw Error('PokeAPI type data could not be parsed');
- await mkdir(dirname(path),{recursive:true});await writeFile(path+'.tmp',JSON.stringify({revision:DATA_REV,source:DATA_RAW,licence:'PokeAPI data, BSD-3-Clause',types})+'\n');await rename(path+'.tmp',path);
+ await atomicWrite(path,JSON.stringify({revision:DATA_REV,source:DATA_RAW,licence:'PokeAPI data, BSD-3-Clause',types})+'\n');
  return types;
 }
 /** Every species' icon, front and shiny front: about 2,900 files at the pinned revision. */

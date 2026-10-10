@@ -9,17 +9,17 @@ export function decodePng(bytes:Uint8Array):Png {
  let width=0,height=0,depth=0,type=0,palette:Buffer|undefined,alpha:Buffer|undefined;const idat:Buffer[]=[];
  for(let offset=8;offset+8<=buffer.length;){
   const length=buffer.readUInt32BE(offset),name=buffer.toString('latin1',offset+4,offset+8),start=offset+8;
-  if(length>buffer.length-start)throw Error('Truncated PNG chunk');
+  if(length>buffer.length-start-4)throw Error('Truncated PNG chunk');
   const chunk=buffer.subarray(start,start+length);
-  if(name==='IHDR'){width=chunk.readUInt32BE(0);height=chunk.readUInt32BE(4);depth=chunk[8];type=chunk[9];if(chunk[12]!==0)throw Error('Interlaced PNG is not supported');}
+  if(name==='IHDR'){if(length!==13||width||offset!==8)throw Error('Invalid PNG header');if(chunk[10]!==0||chunk[11]!==0)throw Error('Unsupported PNG encoding');width=chunk.readUInt32BE(0);height=chunk.readUInt32BE(4);depth=chunk[8];type=chunk[9];if(chunk[12]!==0)throw Error('Interlaced PNG is not supported');}
   else if(name==='PLTE')palette=chunk;else if(name==='tRNS')alpha=chunk;else if(name==='IDAT')idat.push(chunk);else if(name==='IEND')break;
   offset=start+length+4;
  }
  const channels={0:1,2:3,3:1,4:2,6:4}[type];
- if(!channels||!width||!height||width*height>16_777_216||![1,2,4,8,16].includes(depth)||(type!==0&&type!==3&&depth<8))throw Error('Unsupported PNG format');
+ if(!channels||!width||!height||width*height>16_777_216||![1,2,4,8,16].includes(depth)||(type===3&&depth===16)||(type!==0&&type!==3&&depth<8))throw Error('Unsupported PNG format');
  const bitsPerPixel=channels*depth,stride=Math.ceil(width*bitsPerPixel/8),step=Math.max(1,bitsPerPixel>>3);
- const raw=inflateSync(Buffer.concat(idat));
- if(raw.length<(stride+1)*height)throw Error('PNG image data is incomplete');
+ const raw=inflateSync(Buffer.concat(idat),{maxOutputLength:(stride+1)*height});
+ if(raw.length!==(stride+1)*height)throw Error('PNG image data is incomplete');
  const rows=Buffer.alloc(stride*height);
  for(let y=0;y<height;y++){
   const filter=raw[y*(stride+1)],line=raw.subarray(y*(stride+1)+1,(y+1)*(stride+1)),out=rows.subarray(y*stride,(y+1)*stride),up=y?rows.subarray((y-1)*stride,y*stride):undefined;
@@ -32,18 +32,19 @@ export function decodePng(bytes:Uint8Array):Png {
  const data=new Uint8Array(width*height*4),max=(1<<depth)-1;
  const sample=(row:Buffer,index:number)=>{
   if(depth===8)return row[index];
-  if(depth===16)return row[index*2];
+  if(depth===16)return row.readUInt16BE(index*2);
   const bit=index*depth,byte=row[bit>>3];return (byte>>(8-depth-(bit&7)))&max;
  };
+ const u8=(row:Buffer,index:number)=>Math.round(sample(row,index)*255/max);
  for(let y=0;y<height;y++){
   const row=rows.subarray(y*stride,(y+1)*stride);
   for(let x=0;x<width;x++){
    const o=(y*width+x)*4;
    if(type===3){const i=sample(row,x);if(!palette||i*3+2>=palette.length)throw Error('Palette index out of range');data[o]=palette[i*3];data[o+1]=palette[i*3+1];data[o+2]=palette[i*3+2];data[o+3]=alpha&&i<alpha.length?alpha[i]:255;}
-   else if(type===0){const g=Math.round(sample(row,x)*255/max);data[o]=data[o+1]=data[o+2]=g;data[o+3]=255;}
-   else if(type===4){data[o]=data[o+1]=data[o+2]=sample(row,x*2);data[o+3]=sample(row,x*2+1);}
-   else if(type===2){data[o]=sample(row,x*3);data[o+1]=sample(row,x*3+1);data[o+2]=sample(row,x*3+2);data[o+3]=255;}
-   else {data[o]=sample(row,x*4);data[o+1]=sample(row,x*4+1);data[o+2]=sample(row,x*4+2);data[o+3]=sample(row,x*4+3);}
+   else if(type===0){const g=u8(row,x);data[o]=data[o+1]=data[o+2]=g;data[o+3]=alpha?.length===2&&sample(row,x)===alpha.readUInt16BE(0)?0:255;}
+   else if(type===4){data[o]=data[o+1]=data[o+2]=u8(row,x*2);data[o+3]=u8(row,x*2+1);}
+   else if(type===2){data[o]=u8(row,x*3);data[o+1]=u8(row,x*3+1);data[o+2]=u8(row,x*3+2);data[o+3]=alpha?.length===6&&[0,1,2].every(i=>sample(row,x*3+i)===alpha!.readUInt16BE(i*2))?0:255;}
+   else {data[o]=u8(row,x*4);data[o+1]=u8(row,x*4+1);data[o+2]=u8(row,x*4+2);data[o+3]=u8(row,x*4+3);}
   }
  }
  return {width,height,data};

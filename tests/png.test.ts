@@ -35,6 +35,14 @@ test('decodes 4-bit palette images with transparency and rejects interlace',()=>
  assert.throws(()=>decodePng(Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'),chunk('IHDR',header),chunk('IDAT',deflateSync(Buffer.from([0,0,0,0,0]))),chunk('IEND',Buffer.alloc(0))])),/Interlaced/);
  assert.throws(()=>decodePng(Buffer.from('not a png at all, definitely not')),/Not a PNG/);
 });
+test('rejects inflated data beyond the declared geometry and decodes 16-bit grayscale and transparency',()=>{
+ assert.throws(()=>decodePng(png(1,1,8,6,[Buffer.alloc(100_000)])),/larger|length|size/i);
+ const gray=decodePng(png(2,1,16,0,[Buffer.from([0,255,255,128,0])],[chunk('tRNS',Buffer.from([128,0]))]));
+ assert.deepEqual([...gray.data],[255,255,255,255,128,128,128,0]);
+ const rgb=decodePng(png(1,1,8,2,[Buffer.from([0,10,20,30])],[chunk('tRNS',Buffer.from([0,10,0,20,0,30]))]));
+ assert.deepEqual([...rgb.data],[10,20,30,0]);
+});
+
 test('measures the same anchors and head offsets as the Pillow importer',{skip:!existsSync('assets/local/manifest.json')},async()=>{
  const manifest=JSON.parse(await readFile('assets/local/manifest.json','utf8'));
  let checked=0;

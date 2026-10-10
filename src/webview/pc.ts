@@ -6,7 +6,7 @@ import type {Pack,Species} from '../world';
 export interface PcHost {
  send:(msg:unknown)=>void;assetBase:string;pack:()=>Pack|undefined;
  session:()=>{id:string;label:string;species?:string}|undefined;sessions:()=>{id:string;label:string;species?:string}[];select:(id:string)=>void;
- choose:(id:string)=>void;recall:()=>{view?:string}|undefined;remember:(state:{view:string})=>void;
+ choose:(id:string,sessionId:string)=>void;recall:()=>{view?:string}|undefined;remember:(state:{view:string})=>void;
 }
 const SOURCE='https://github.com/PMDCollab/SpriteCollab/tree/';
 const LAST_ICON=898;
@@ -19,7 +19,7 @@ export class PokemonPc {
  private dex?:Dex;private error?:string;private requested=false;
  private view:'game'|'guild'='game';private box=0;private cursor=0;private menu:'none'|'main'|'forms'|'summary'='none';private party=false;private shiny=false;
  private portraits=new Map<string,AssetState>();private game=new Map<string,AssetState>();private types?:Record<string,string[]>;private typesRequested=false;
- private importing?:string;private note='';private opener?:HTMLElement;private progress?:{done:number;total:number;failed?:number;complete?:boolean};
+ private importing?:string;private importTarget?:{id:string;label:string};private note='';private opener?:HTMLElement;private progress?:{done:number;total:number;failed?:number;complete?:boolean};
  constructor(parent:HTMLElement,private host:PcHost){
   this.view=host.recall()?.view==='guild'?'guild':'game';
   this.root=el('section','pc');this.root.setAttribute('role','dialog');this.root.setAttribute('aria-modal','true');this.root.setAttribute('aria-label','Pokémon storage');this.root.hidden=true;
@@ -48,30 +48,36 @@ export class PokemonPc {
   this.menu='none';this.render();this.focusCursor();
  }
  close(){this.root.hidden=true;this.menu='none';this.party=false;this.opener?.focus();}
- setDex(m:{dex?:Dex;error?:string}){this.dex=m.dex;this.error=m.error;this.requested=!!m.dex;if(this.isOpen()){this.open(this.opener);}}
+ setDex(m:{dex?:Dex;error?:string}){this.dex=m.dex;this.error=m.error;this.requested=!!m.dex;if(this.isOpen()){if(m.dex)this.open(this.opener);else this.render();}}
  setTypes(m:{types?:Record<string,string[]>;error?:string}){this.types=m.types;this.typesRequested=!!m.types;if(m.error)this.note=m.error;if(this.isOpen())this.render();}
- portraitsReady(m:{ready?:Record<string,string>;failed?:string[]}){
+ portraitsReady(m:{ready?:Record<string,string>;failed?:string[];error?:string}){
+  if(m.error)this.note=m.error;
   for(const [path,file] of Object.entries(m.ready||{}))this.portraits.set(path,file);
   for(const path of m.failed||[])this.portraits.set(path,'failed');
   if(this.isOpen())this.render();
  }
- gameReady(m:{ready?:Record<string,string>;failed?:string[]}){
+ gameReady(m:{ready?:Record<string,string>;failed?:string[];error?:string}){
+  if(m.error)this.note=m.error;
   for(const [key,file] of Object.entries(m.ready||{}))this.game.set(key,file);
   for(const key of m.failed||[])this.game.set(key,'failed');
   if(this.isOpen())this.render();
  }
- gameProgress(m:{done:number;total:number;failed?:number;complete?:boolean}){
-  this.progress=m;if(m.complete)for(const [key,state] of this.game)if(state==='failed'||state==='pending')this.game.delete(key);
+ gameProgress(m:{done:number;total:number;failed?:number;complete?:boolean;error?:string}){
+  if(m.error)this.note=m.error;
+  this.progress=m;if(m.complete&&!m.error)for(const [key,state] of this.game)if(state==='failed'||state==='pending')this.game.delete(key);
   if(this.isOpen())this.render();
  }
  imported(m:{path:string;id:string;species?:Species;error?:string}){
-  if(this.importing!==m.id)return;this.importing=undefined;
-  if(m.species){this.chosen(this.host.session()?.label||'the teammate',m.id);return;}
+  if(this.importing!==m.id)return;this.importing=undefined;const target=this.importTarget;this.importTarget=undefined;
+  if(m.species&&target){
+   if(!this.host.sessions().some(s=>s.id===target.id)){this.note='Imported to the roster. The original teammate is no longer connected.';if(this.isOpen())this.render();return;}
+   this.chosen(target.label,m.id,target.id);return;
+  }
   this.note=m.error||'Import failed.';if(this.isOpen())this.render();
  }
  /** While the Guild team panel is open the storage stays open, so the whole team can be dressed in one visit. */
- private chosen(label:string,id:string){
-  this.host.choose(id);this.menu='none';
+ private chosen(label:string,id:string,sessionId:string){
+  this.host.choose(id,sessionId);this.menu='none';
   if(!this.party){this.note='';this.close();return;}
   const name=this.host.pack()?.sprites.find(s=>s.id===id)?.name||id;this.note=label+' now has '+name+'.';this.render();this.focusCursor();
  }
@@ -114,10 +120,10 @@ export class PokemonPc {
  private status(form:DexForm){const pack=this.host.pack();return pack?.sprites.some(s=>s.id===form.id)?'In roster':form.ready?'Ready':form.portrait?'Portrait only':'Not drawn yet';}
  private choose(species:DexSpecies,form:DexForm){
   const session=this.host.session();if(!session){this.note='Select a teammate in the guild first (Guild team), then choose its Pokémon here.';this.render();return;}
-  if(this.host.pack()?.sprites.some(s=>s.id===form.id)){this.chosen(session.label,form.id);return;}
-  if(!form.ready){this.note=species.name+' ('+form.label+') has no complete Idle, Walk, Attack and Sleep sheets yet.';this.render();return;}
   if(this.importing)return;
-  this.importing=form.id;this.note='';this.host.send({type:'dexImport',path:form.path,id:form.id});this.render();
+  if(this.host.pack()?.sprites.some(s=>s.id===form.id)){this.chosen(session.label,form.id,session.id);return;}
+  if(!form.ready){this.note=species.name+' ('+form.label+') has no complete Idle, Walk, Attack and Sleep sheets yet.';this.render();return;}
+  this.importing=form.id;this.importTarget={id:session.id,label:session.label};this.note='';this.host.send({type:'dexImport',path:form.path,id:form.id});this.render();
  }
  /** The PMD-style menu for the species under the cursor; the same element serves both views. */
  private menuElement(species:DexSpecies){
