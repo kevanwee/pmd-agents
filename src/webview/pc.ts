@@ -66,8 +66,14 @@ export class PokemonPc {
  }
  imported(m:{path:string;id:string;species?:Species;error?:string}){
   if(this.importing!==m.id)return;this.importing=undefined;
-  if(m.species){this.host.choose(m.id);this.note='';this.close();return;}
+  if(m.species){this.chosen(this.host.session()?.label||'the teammate',m.id);return;}
   this.note=m.error||'Import failed.';if(this.isOpen())this.render();
+ }
+ /** While the Guild team panel is open the storage stays open, so the whole team can be dressed in one visit. */
+ private chosen(label:string,id:string){
+  this.host.choose(id);this.menu='none';
+  if(!this.party){this.note='';this.close();return;}
+  const name=this.host.pack()?.sprites.find(s=>s.id===id)?.name||id;this.note=label+' now has '+name+'.';this.render();this.focusCursor();
  }
  private find(query:string){
   if(!this.dex)return;const hit=findSpecies(this.dex,query);
@@ -85,10 +91,10 @@ export class PokemonPc {
  private key(e:KeyboardEvent){
   // Escape steps back one level, like B in the games: submenu → menu → box → closed.
   if(e.key==='Escape'){e.preventDefault();
-   if(this.party){this.party=false;this.render();this.focusCursor();}
-   else if(this.menu==='forms'||this.menu==='summary'){this.menu='main';this.shiny=false;this.render();this.focusMenu();}
-   else if(this.menu==='main'){this.menu='none';this.render();this.focusCursor();}else this.close();return;}
-  if(e.target instanceof HTMLInputElement||this.party)return;
+   if(this.menu==='forms'||this.menu==='summary'){this.menu='main';this.shiny=false;this.render();this.focusMenu();}
+   else if(this.menu==='main'){this.menu='none';this.render();this.focusCursor();}
+   else if(this.party){this.party=false;this.render();this.focusCursor();}else this.close();return;}
+  if(e.target instanceof HTMLInputElement)return;
   const keys:Record<string,()=>void>={ArrowLeft:()=>this.move(-1),ArrowRight:()=>this.move(1),ArrowUp:()=>this.move(-6),ArrowDown:()=>this.move(6),PageUp:()=>this.move(0,-1),PageDown:()=>this.move(0,1),Home:()=>this.move(-BOX_SIZE),End:()=>this.move(BOX_SIZE)};
   if(keys[e.key]){e.preventDefault();keys[e.key]();}
  }
@@ -108,7 +114,7 @@ export class PokemonPc {
  private status(form:DexForm){const pack=this.host.pack();return pack?.sprites.some(s=>s.id===form.id)?'In roster':form.ready?'Ready':form.portrait?'Portrait only':'Not drawn yet';}
  private choose(species:DexSpecies,form:DexForm){
   const session=this.host.session();if(!session){this.note='Select a teammate in the guild first (Guild team), then choose its Pokémon here.';this.render();return;}
-  if(this.host.pack()?.sprites.some(s=>s.id===form.id)){this.host.choose(form.id);this.close();return;}
+  if(this.host.pack()?.sprites.some(s=>s.id===form.id)){this.chosen(session.label,form.id);return;}
   if(!form.ready){this.note=species.name+' ('+form.label+') has no complete Idle, Walk, Attack and Sleep sheets yet.';this.render();return;}
   if(this.importing)return;
   this.importing=form.id;this.note='';this.host.send({type:'dexImport',path:form.path,id:form.id});this.render();
@@ -188,8 +194,20 @@ export class PokemonPc {
  private drawGame(page:{index:number;count:number;species:DexSpecies[]}){
   const wrap=el('div','gs');const species=page.species[this.cursor];
   this.requestGame(page.species.map(s=>s.dex));
-  const summary=el('aside','gs-summary');summary.setAttribute('aria-label','Selected Pokémon');
-  if(species){
+  const summary=el('aside','gs-summary');summary.setAttribute('aria-label',this.party?'Guild team':'Selected Pokémon');
+  if(this.party){
+   // The team panel takes the summary's place so the box stays browsable while the whole team is dressed.
+   summary.append(el('h3','gs-party-title','Guild team'),el('p','muted','Pick the teammate you are dressing, then choose from the box.'));
+   const sessions=this.host.sessions();if(!sessions.length)summary.append(el('p','muted','No sessions are connected.'));
+   for(const s of sessions){
+    const sp=this.host.pack()?.sprites.find(x=>x.id===s.species);
+    const b=document.createElement('button');b.className='gs-party-row';b.dataset.key='party:'+s.id;b.setAttribute('aria-pressed',String(this.host.session()?.id===s.id));
+    const icon=sp?.dex?this.asset('icon',sp.dex)||this.asset('front',sp.dex):undefined;
+    b.append(image(this.host.assetBase+(icon||sp?.portrait||''),'',icon?'gs-party-icon':'gs-party-icon gs-party-portrait'),el('span','gs-party-text',s.label+(sp?' · '+sp.name:'')));
+    b.onclick=()=>{this.host.select(s.id);this.menu='none';this.render();};summary.append(b);
+    if(sp?.dex)this.requestGame([sp.dex]);
+   }
+  }else if(species){
    const base=species.forms[0];
    const frame=el('div','gs-sprite');const front=this.asset(this.shiny?'shiny':'front',species.dex);
    if(front)frame.append(image(this.host.assetBase+front,species.name+(this.shiny?' (Shiny)':''),'gs-front'));
@@ -206,19 +224,7 @@ export class PokemonPc {
   }
   const boxPanel=el('section','gs-box');boxPanel.setAttribute('aria-label','Box '+(page.index+1));
   boxPanel.append(this.boxNav(page,'gs-box-head'));
-  if(this.party){
-   const partyPanel=el('div','gs-party');partyPanel.append(el('h3','','Guild team'),el('p','muted','Choose the teammate you are picking a Pokémon for.'));
-   const sessions=this.host.sessions();if(!sessions.length)partyPanel.append(el('p','muted','No sessions are connected.'));
-   for(const s of sessions){
-    const sp=this.host.pack()?.sprites.find(x=>x.id===s.species);
-    const b=document.createElement('button');b.className='gs-party-row';b.dataset.key='party:'+s.id;b.setAttribute('aria-pressed',String(this.host.session()?.id===s.id));
-    const icon=sp?.dex?this.asset('icon',sp.dex)||this.asset('front',sp.dex):undefined;
-    b.append(image(this.host.assetBase+(icon||sp?.portrait||''),'',icon?'gs-party-icon':'gs-party-icon gs-party-portrait'),el('span','gs-party-text',s.label+(sp?' · '+sp.name:'')));
-    b.onclick=()=>{this.host.select(s.id);this.party=false;this.menu='none';this.render();this.focusCursor();};partyPanel.append(b);
-    if(sp?.dex)this.requestGame([sp.dex]);
-   }
-   const back=el('button','','Back');back.onclick=()=>{this.party=false;this.render();this.focusCursor();};partyPanel.append(back);boxPanel.append(partyPanel);
-  }else{
+  {
    const gridWrap=el('div','gs-grid-wrap'),grid=el('div','gs-grid');grid.setAttribute('role','group');grid.setAttribute('aria-label','Box '+(page.index+1)+' Pokémon');
    page.species.forEach((s,i)=>{
     const slot=this.slotButton(s,i,'gs-slot');
@@ -238,7 +244,7 @@ export class PokemonPc {
    boxPanel.append(gridWrap);
   }
   const bar=el('div','gs-bar');
-  const team=el('button','gs-tab',this.party?'Box':'Guild team');team.setAttribute('aria-pressed',String(this.party));team.onclick=()=>{this.party=!this.party;this.menu='none';this.render();};
+  const team=el('button','gs-tab','Guild team');team.setAttribute('aria-pressed',String(this.party));team.onclick=()=>{this.party=!this.party;this.menu='none';this.note='';this.render();};
   const fetchAll=el('button','gs-tab',this.progress&&!this.progress.complete?'Fetching '+this.progress.done+' / '+this.progress.total:this.progress?.complete?'Game sprites fetched'+(this.progress.failed?' · '+this.progress.failed+' missing':''):'Fetch all game sprites');
   (fetchAll as HTMLButtonElement).disabled=!!this.progress&&!this.progress.complete;fetchAll.onclick=()=>{this.progress={done:0,total:1};this.host.send({type:'gameImportAll'});this.render();};
   const back=el('button','gs-tab gs-return','Return');back.onclick=()=>this.close();

@@ -43,3 +43,14 @@ test('detaching a parent removes its children without closing any provider',()=>
  assert.equal(s.store.agents.get('codex:b')!.attached,true);s.detach('codex:a');
  assert.equal(s.store.agents.get('codex:b')!.attached,false);assert.equal(s.store.agents.get('codex:b')!.ended,false);
 });
+test('auto-attach spawns discovered sessions by default, releases only its own and respects exclusions',()=>{
+ const s=new Sessions(['codex:excluded']);
+ s.receive(e('codex:hooked','session'),false,{source:'hook'});s.receive(e('codex:excluded','turn'),false,{source:'hook'});s.receive(e('codex:manual','turn'),false,{source:'transcript'});s.attach('codex:manual');
+ s.autoAttach(true);
+ assert.equal(s.store.agents.get('codex:hooked')!.attached,true);assert.equal(s.membership.get('codex:hooked'),'auto');
+ assert.equal(s.store.agents.get('codex:excluded')!.attached,false,'removed sessions stay excluded');assert.equal(s.membership.get('codex:manual'),'manual');
+ s.autoAttach(false);
+ assert.equal(s.store.agents.get('codex:hooked')!.attached,false);assert.equal(s.membership.has('codex:hooked'),false);assert.equal(s.store.agents.get('codex:manual')!.attached,true);
+ s.mark('codex:manual','unavailable');s.receive(e('codex:lost','turn'),false,{source:'transcript'});s.mark('codex:lost','unavailable');s.autoAttach(true);
+ assert.equal(s.store.agents.get('codex:lost')!.attached,false,'a source that is not observing is not spawned');
+});
