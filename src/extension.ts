@@ -8,7 +8,11 @@ import {WorkspaceLease} from './autoconnect';
 import {Sessions} from './sessions';
 import {startReceiver} from './receiver';
 import {prepareSetup,installSetup,type HookPlan} from './setup';
-import {loadPack} from './assets';
+import {loadPack,validateSpecies} from './assets';
+import {loadDex,trackerFetch} from './catalog';
+import {portraitFile,portraitPath,type Dex} from './dex';
+import {cachedFetch,ensurePortraits,importSpecies,writeImport} from './importer';
+import {allGameAssets,ensureFiles,fetchUrl,gameAssets,loadTypes,LAST_DEX,type GameTypes} from './gamedata';
 import type {Pack} from './world';
 import {startTranscriptWatcher,type Evidence} from './transcripts';
 export async function activate(context:vscode.ExtensionContext) {
@@ -90,6 +94,22 @@ export async function activate(context:vscode.ExtensionContext) {
   const local=join(context.extensionPath,'assets','local');
   let directory=configured||(existsSync(join(local,'manifest.json'))?local:join(homedir(),'.pmd-agents','assets')),pack:Pack|undefined,assetError='';
   try{pack=await loadPack(directory);}catch{assetError='Choose a local PMD asset pack to bring the guild to life.';}
+  // The living Pokédex: catalog, box portraits and species imports are pinned SpriteCollab fetches into the local pack, one at a time.
+  let dex:Dex|undefined,types:GameTypes|undefined,importQueue=Promise.resolve(),gameImport:Promise<unknown>|undefined;
+  const spriteNames=async()=>{try{return new TextDecoder().decode(await cachedFetch(directory)('spritebot_credits.txt'));}catch{return '';}};
+  const importForm=async(path:string,id:string)=>{
+   if(!pack)throw Error('No asset pack is loaded.');
+   const existing=pack.sprites.find(s=>s.id===id);if(existing)return existing;
+   dex??=await loadDex(directory,trackerFetch);
+   const species=dex.species.find(s=>s.forms.some(f=>f.path===path&&f.id===id)),form=species?.forms.find(f=>f.path===path);
+   if(!species||!form||!form.ready)throw Error('That form has no complete Idle, Walk, Attack and Sleep sheets yet.');
+   // Move colours follow the species' primary type when the pack or PokeAPI data knows it.
+   if(!types)types=await loadTypes(directory).catch(()=>undefined);
+   const element=pack.sprites.find(s=>s.dex===species.dex)?.element||types?.[String(species.dex).padStart(4,'0')]?.[0];
+   const result=await importSpecies({id,name:species.name,dex:species.dex,path,label:form.label,element,portraitPath:portraitPath(species,path)},cachedFetch(directory),await spriteNames());
+   await writeImport(directory,result,validateSpecies);
+   pack.sprites.push(result.species);return result.species;
+  };
   panel=vscode.window.createWebviewPanel('pmdAgents','PMD Agents',vscode.ViewColumn.Beside,{
    enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[vscode.Uri.joinPath(context.extensionUri,'media'),...(pack?[vscode.Uri.file(directory)]:[])]
   });
@@ -128,6 +148,36 @@ export async function activate(context:vscode.ExtensionContext) {
       if(command && (await vscode.commands.getCommands(true)).includes(command))await vscode.commands.executeCommand(command);
       else void vscode.window.showInformationMessage('The source session is no longer available in this window.');
      }
+    }
+    if(msg.type==='dex'){
+     if(!pack)void webview.postMessage({type:'dex',error:'Choose an asset pack first.'});
+     else try{dex??=await loadDex(directory,trackerFetch);void webview.postMessage({type:'dex',dex});}
+     catch(error){void webview.postMessage({type:'dex',error:'The Pokédex catalog could not be fetched from PMD SpriteCollab: '+(error instanceof Error?error.message:'unknown error')});}
+    }
+    if(msg.type==='dexPortraits'&&pack&&Array.isArray(msg.paths)){
+     const paths=msg.paths.filter((p:unknown)=>typeof p==='string'&&/^[0-9]{4}(\/[0-9]{4}){0,4}$/.test(p)).slice(0,40);
+     const result=await ensurePortraits(directory,paths,cachedFetch(directory),portraitFile);void webview.postMessage({type:'dexPortraits',...result});
+    }
+    if(msg.type==='gameTypes'&&pack){
+     try{types??=await loadTypes(directory);void webview.postMessage({type:'gameTypes',types});}
+     catch(error){void webview.postMessage({type:'gameTypes',error:'Type data could not be fetched from PokeAPI: '+(error instanceof Error?error.message:'unknown error')});}
+    }
+    if(msg.type==='gameAssets'&&pack&&Array.isArray(msg.dexes)){
+     const dexes=msg.dexes.filter((n:unknown)=>Number.isInteger(n)&&(n as number)>=1&&(n as number)<=LAST_DEX).slice(0,40) as number[];
+     const result=await ensureFiles(directory,dexes.flatMap(gameAssets),fetchUrl,'game/receipts.json');void webview.postMessage({type:'gameAssets',...result});
+    }
+    if(msg.type==='gameImportAll'&&pack&&!gameImport){
+     const items=allGameAssets(),total=items.length;let last=0;
+     gameImport=ensureFiles(directory,items,fetchUrl,'game/receipts.json',8,done=>{if(done-last>=50){last=done;void panel?.webview.postMessage({type:'gameImport',done,total});}})
+      .then(result=>{void panel?.webview.postMessage({type:'gameImport',done:total,total,failed:result.failed.length,complete:true});},()=>{void panel?.webview.postMessage({type:'gameImport',done:0,total,failed:total,complete:true});})
+      .finally(()=>{gameImport=undefined;});
+    }
+    if(msg.type==='dexImport'&&typeof msg.path==='string'&&typeof msg.id==='string'&&/^[a-z0-9-]{1,48}$/.test(msg.id)){
+     const {path,id}=msg;
+     importQueue=importQueue.then(async()=>{
+      try{const species=await importForm(path,id);void webview.postMessage({type:'dexImport',path,id,species});}
+      catch(error){void webview.postMessage({type:'dexImport',path,id,error:error instanceof Error?error.message:'Import failed.'});}
+     });
     }
     if(msg.type==='setup')await beginSetup(false,msg.provider);
     if(msg.type==='installHooks'&&typeof msg.id==='string'&&pendingSetup?.id===msg.id){

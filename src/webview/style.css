@@ -5,3 +5,59 @@
 .hook-path{overflow-wrap:anywhere}.hook-setup pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:10px;max-height:180px;overflow:auto}.hook-setup summary{cursor:pointer;font-size:11px}.hook-setup button{margin-right:5px}
 
 .scene-controls{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:250px}.scene-controls select{width:100%}.scene-controls button{font-size:10px;padding:5px 8px}.scene-heading{flex-wrap:wrap}.scene-heading h2{font-size:24px}canvas{touch-action:none}select[aria-label="Activity source"]{width:100%;margin:8px 0}@media(max-width:600px){.scene-controls{max-width:none;width:100%;justify-content:flex-start}.scene-controls select{width:auto;flex:1;min-width:135px}}
+
+/* Pokémon storage system (pc.ts): a box of thirty in National Dex order, a menu beside it. Original styling, no game UI rips. */
+.pc{position:fixed;inset:0;z-index:40;background:#0b1317e6;display:flex;align-items:flex-start;justify-content:center;padding:14px;overflow:auto}.pc[hidden]{display:none}
+.pc-frame{width:min(980px,100%);background:#17232a;border:2px solid #a8badd;border-radius:8px;box-shadow:inset 0 0 0 3px #17232a,inset 0 0 0 4px #374878,0 12px 40px #0008;display:flex;flex-direction:column}
+.pc-head{display:flex;align-items:center;gap:14px;padding:16px 20px 12px;border-bottom:1px solid #2f3d44;flex-wrap:wrap}.pc-head h2{font-family:Pixelify,monospace;font-size:24px;font-weight:400;margin:3px 0 0;color:#f1e7c8}
+.pc-search{display:flex;gap:6px;margin-left:auto}.pc-search input{font:inherit;color:inherit;background:#0f1a20;border:1px solid #4b5859;border-radius:5px;padding:7px 10px;width:170px;min-width:0}.pc-search input:focus-visible{outline:2px solid #f0d783;outline-offset:2px}
+.pc-close{font-size:11px}
+.pc-body{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;padding:16px 20px}
+.pc-box{display:flex;flex-direction:column;gap:10px}.pc-box-nav{display:flex;align-items:center;justify-content:space-between;gap:8px}.pc-box-nav button{padding:5px 9px;font-size:11px}
+.pc-box-range{font-family:Pixelify,monospace;font-size:15px;color:#ead998;white-space:nowrap}
+.pc-grid{display:grid;grid-template-columns:repeat(6,50px);gap:4px;padding:8px;background:#0f1a20;border:1px solid #3a4a52;border-radius:6px}
+.pc-grid .pc-slot{position:relative;width:50px;height:56px;padding:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;background:#1b292f;border:1px solid #2f3d44;border-radius:4px}
+.pc-grid .pc-slot img{width:40px;height:40px;image-rendering:pixelated;display:block}.pc-grid .pc-slot:hover{background:#263a40}.pc-grid .pc-slot[aria-pressed=true]{border-color:#f0d783;background:#2f3f3a;box-shadow:inset 0 0 0 1px #f0d783}
+.pc-grid .pc-slot.in-roster{border-color:#7fa58b}.pc-grid .pc-slot.chosen:after{content:"★";position:absolute;top:1px;right:3px;font-size:9px;color:#f0d783}
+.pc-dot{font-family:Pixelify,monospace;font-size:12px;color:#8ea39a;height:40px;display:flex;align-items:center}.pc-no{font-size:8px;color:#9fb2a8;line-height:1}
+.pc-panel{display:flex;flex-direction:column;gap:12px;min-width:0}
+.pc-card{display:flex;align-items:center;gap:14px;padding:12px;background:#111b38;border:2px solid #a8badd;box-shadow:inset 0 0 0 3px #111b38,inset 0 0 0 4px #374878;border-radius:8px}
+.pc-portrait{width:80px;height:80px;image-rendering:pixelated;background:#0c132a;border:1px solid #5a6b8c;flex-shrink:0}.pc-portrait-missing{display:flex;align-items:center;justify-content:center;font-size:10px;color:#8e9bbd}
+.pc-card-text{display:flex;flex-direction:column;gap:3px;min-width:0}.pc-card-no{font-size:11px;color:#a0aec4}.pc-card-text strong{font-family:Pixelify,monospace;font-size:22px;font-weight:400;color:#eed678}.pc-card-state{font-size:11px;color:#d6d9ba}
+.pc-menu{display:flex;flex-direction:column;gap:4px;padding:10px;background:#111b38;border:2px solid #a8badd;box-shadow:inset 0 0 0 3px #111b38,inset 0 0 0 4px #374878;border-radius:8px}
+.pc-menu button{text-align:left;background:transparent;border-color:transparent;padding:7px 10px 7px 22px;position:relative;font-family:Pixelify,monospace;font-size:16px;color:#f4ecd2}
+.pc-menu button:hover:not(:disabled),.pc-menu button:focus-visible{background:#1d2a4d;border-color:#374878}.pc-menu button:focus-visible:before,.pc-menu button:hover:not(:disabled):before{content:"";position:absolute;left:8px;top:12px;border-left:6px solid #eed678;border-top:5px solid transparent;border-bottom:5px solid transparent}
+.pc-menu button:disabled{color:#7f89a6;opacity:1}.pc-menu .muted{padding:4px 6px;margin:0}
+.pc-summary{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:4px 6px 10px;font-size:12px}.pc-summary dt{color:#a0aec4}.pc-summary dd{margin:0;color:#e9e4cb;overflow-wrap:anywhere}
+.pc-note{font-size:12px;color:#f0d783;margin:0;line-height:1.5}.pc-empty{grid-column:1/-1;text-align:center;padding:30px 10px}.pc-empty h3{font-family:Pixelify,monospace;font-size:22px;font-weight:400;margin:0 0 8px}
+.pc-foot{padding:10px 20px 14px;font-size:10px;color:#8faaa0;border-top:1px solid #2f3d44;line-height:1.5}
+@media(max-width:700px){.pc{padding:6px}.pc-body{grid-template-columns:1fr;gap:12px;padding:12px}.pc-grid{grid-template-columns:repeat(6,minmax(0,1fr));justify-items:center}.pc-search{margin-left:0;width:100%}.pc-search input{flex:1;width:auto}.pc-head{padding:12px}}
+
+/* Game view (the primary storage view): a main-series box with icons on a wallpaper, the species' front sprite and types beside it. Original CSS, no game UI rips. */
+.pc-view{font-size:11px}
+.gs{display:grid;grid-template-columns:220px minmax(0,1fr);gap:16px;padding:16px 20px}
+.gs-summary{display:flex;flex-direction:column;gap:10px;padding:12px;background:linear-gradient(#2c3f6a,#1b2a4b);border:2px solid #a8badd;border-radius:8px;box-shadow:inset 0 0 0 3px #1b2a4b,inset 0 0 0 4px #4b619a}
+.gs-sprite{display:flex;align-items:center;justify-content:center;height:200px;background:radial-gradient(circle at 50% 70%,#3d5587 0,#1b2a4b 70%);border:1px solid #4b619a;border-radius:6px}
+.gs-front{width:192px;height:192px;image-rendering:pixelated}.gs-front-portrait{width:80px;height:80px;border:1px solid #5a6b8c}.gs-front-missing{font-size:11px;color:#9fb0d6}
+.gs-name{display:flex;align-items:baseline;justify-content:space-between;gap:8px}.gs-name strong{font-family:Pixelify,monospace;font-size:22px;font-weight:400;color:#f4ecd2}.gs-name span{font-size:11px;color:#a9b8d8}
+.gs-types{display:flex;gap:6px;flex-wrap:wrap}.type{font-size:9px;font-weight:700;letter-spacing:.6px;padding:3px 8px;border-radius:3px;color:#fff;text-shadow:0 1px 0 #0006;border:1px solid #fff5}
+.type-normal{background:#a8a878}.type-fire{background:#f08030}.type-water{background:#6890f0}.type-grass{background:#78c850}.type-electric{background:#f8d030;color:#3b3200;text-shadow:none}.type-ice{background:#98d8d8;color:#0f3b3b;text-shadow:none}.type-fighting{background:#c03028}.type-poison{background:#a040a0}.type-ground{background:#e0c068;color:#3b2f00;text-shadow:none}.type-flying{background:#a890f0}.type-psychic{background:#f85888}.type-bug{background:#a8b820}.type-rock{background:#b8a038}.type-ghost{background:#705898}.type-dragon{background:#7038f8}.type-dark{background:#705848}.type-steel{background:#b8b8d0;color:#2b2b3b;text-shadow:none}.type-fairy{background:#ee99ac;color:#4a1f2b;text-shadow:none}.type-unknown{background:#3a4a6a;color:#c5cfe6}
+.gs-rows{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;margin:0;font-size:11px}.gs-rows dt{color:#a9b8d8}.gs-rows dd{margin:0;color:#eef0f7;overflow-wrap:anywhere}
+.gs-box{display:flex;flex-direction:column;gap:0;min-width:0;border:2px solid #a8badd;border-radius:8px;overflow:hidden;background:#17232a}
+.gs-box-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:linear-gradient(#5d9c3b,#3d7227);border-bottom:2px solid #a8badd}
+.gs-box-head .pc-box-range{color:#fbf6d8;text-shadow:1px 1px 0 #0007;font-size:16px}.gs-box-head button{padding:4px 10px;background:#2b4d1d;border-color:#9fd07b;color:#f5f1d0}
+.gs-grid-wrap{position:relative;padding:12px;background:#2f5a2a;background-image:radial-gradient(circle at 20% 30%,#3f7a37 0 14%,transparent 15%),radial-gradient(circle at 70% 60%,#3b7233 0 18%,transparent 19%),radial-gradient(circle at 45% 85%,#447f3b 0 10%,transparent 11%),repeating-linear-gradient(135deg,#0000 0 10px,#0001 10px 12px)}
+.gs-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.gs-slot{height:92px;display:flex;align-items:center;justify-content:center;padding:0;overflow:hidden;background:#0001;border:1px solid #0002;border-radius:4px}
+.gs-slot:hover{background:#fff2}.gs-slot[aria-pressed=true]{background:#fff3;border-color:#fff2a8;box-shadow:inset 0 0 0 1px #fff2a8}.gs-empty{pointer-events:none}
+.gs-slot.in-roster{border-color:#dff5c7aa}.gs-slot.chosen{position:relative}.gs-slot.chosen:after{content:"★";position:absolute;top:1px;right:3px;font-size:9px;color:#fff2a8;text-shadow:0 1px 0 #0008}
+/* Icons draw at 2x, the DS proportion of a 32px icon in a 64px cell; the five widest icons lose a few edge pixels. */
+.gs-icon{width:136px;height:112px;max-width:none;flex-shrink:0;image-rendering:pixelated;display:block}.gs-icon-front{width:96px;height:96px}.gs-icon-portrait{width:36px;height:36px;border:1px solid #0004}.gs-icon-missing{font-family:Pixelify,monospace;font-size:12px;color:#e8f0dd;text-shadow:0 1px 0 #0008}
+.gs-popup{position:absolute;z-index:2;width:200px;max-width:calc(100% - 24px)}.gs-popup .pc-menu{box-shadow:inset 0 0 0 3px #111b38,inset 0 0 0 4px #374878,0 8px 24px #0009}
+.gs-bar{display:flex;gap:6px;padding:8px 10px;background:#1b2a4b;border-top:2px solid #a8badd;flex-wrap:wrap}
+.gs-tab{font-family:Pixelify,monospace;font-size:14px;color:#f4e39a;background:#0f1a36;border:1px solid #4b619a;padding:6px 14px}.gs-tab[aria-pressed=true]{background:#2b4d1d;border-color:#9fd07b}.gs-return{margin-left:auto}
+.gs-party{display:flex;flex-direction:column;gap:6px;padding:12px;min-height:200px}.gs-party h3{margin:0;font-family:Pixelify,monospace;font-size:18px;font-weight:400;color:#f4ecd2}.gs-party .muted{margin:0}
+.gs-party-row{display:flex;align-items:center;gap:10px;text-align:left;padding:6px 10px;background:#1b292c}.gs-party-row[aria-pressed=true]{border-color:#f0d783}
+.gs-party-icon{width:48px;height:40px;object-fit:contain;image-rendering:pixelated}.gs-party-portrait{width:40px;height:40px}.gs-party-text{font-family:Pixelify,monospace;font-size:15px;color:#ede7c9}
+@media(max-width:1000px){.gs-slot{height:60px}.gs-icon{width:68px;height:56px}.gs-icon-front{width:48px;height:48px}}
+@media(max-width:700px){.gs{grid-template-columns:1fr;padding:12px;gap:12px}.gs-sprite{height:120px}.gs-front{width:96px;height:96px}.gs-slot{height:52px}.gs-icon{width:68px;height:56px}.gs-icon-front{width:40px;height:40px}.gs-popup{width:180px}}
