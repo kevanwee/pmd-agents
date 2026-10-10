@@ -2,7 +2,7 @@
 export function connectionStatus(state:{workspaces?:string[];observationEnabled?:boolean;autoState?:string;autoConnect?:boolean;autoAttach?:boolean;diagnostics?:{files:number;outsideWorkspace?:number;unsupported:number;readErrors:number;lastScan:number}}){
  const names=state.workspaces;
  if(state.autoState==='ambiguous')return 'Another guild window shares these folders. Choose the intended sessions in Connections.';
- if(state.observationEnabled===false)return 'Local chat observation is disabled. Enable it in Connections.';
+ if(state.observationEnabled===false)return 'Local chat observation is disabled. Enable Observe Local Chats in VS Code settings.';
  if(names?.length===0)return 'No workspace folder is open. Open your project in this window; terminals and window-bound hooks can still connect.';
  if(state.autoConnect===false&&state.autoAttach===false)return 'Automatic connection is disabled. Enable it in Connections or attach a session there.';
  const scope=names?.length?'Watching '+names.join(', ')+'. ':'';
