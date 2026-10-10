@@ -20,7 +20,7 @@ In the storage system, Guild team now replaces the summary panel; selecting a te
 
 ## 0.4.0: the Pokémon storage system
 
-Delivered 10 October 2026. The owner asked for a PC like the main-series games: a living Pokédex in National Dex order where a Pokémon opens a menu for choosing it, its forms, or more detail. It is built here first; transfer to Voracity or the portfolio is a later decision.
+Delivered 10 October 2026. The owner asked for a PC like the main-series games: a living Pokédex in National Dex order where a Pokémon opens a menu for choosing it, its forms, or more detail.
 
 `src/dex.ts` reduces SpriteCollab's `tracker.json` (pinned revision `47e5b99`) to a catalog: 1,025 canon species, 4,021 drawn forms, 3,224 marked ready. Forms are the tracker's own subgroups (shiny, female, alternate), labelled from their names; container nodes are skipped; species whose names collapse to one slug carry their number. *Ready* means the tracker records the sprite set as existing (phase 1 or 2). The tracker's per-file flags were checked against upstream and found unrecorded for every recolour and many older uploads, so the phase decides; the importer still verifies every sheet. A sample of ten unflagged phase-1/2 forms all had the four required sheets upstream; four phase-0 samples had none except one, which the catalog therefore under-reports rather than over-promises.
 
@@ -133,7 +133,7 @@ The sanitized `artifacts/transcript-probe.json` records 29 tool starts, 28 tool 
 
 The importer pins SpriteCollab revision `47e5b9920bc5b2b491c53b18076300dc6813f103`, validates dimensions and directions, resolves aliases, and reads white shadow anchors. [PMD Sprite Format](https://wiki.pmdo.pmdcollab.org/PMD_Sprite_Format) defines durations in 1/60-second units. Source PNGs are unchanged.
 
-Ignored `assets/local` contains the pack, source records, original credit files and SHA-256 receipts. Python and Pillow are required to import it. The existing Voracity map and font are read without modifying Voracity. The map's exact original ripper remains unresolved.
+Ignored `assets/local` contains the pack, source records, original credit files and SHA-256 receipts. Python and Pillow are required to import it. Maps and the font are downloaded from pinned public sources and verified by hash. The map's exact original ripper remains unresolved.
 
 Eevee and Riolu sprite records identify CHUNSOFT with Unspecified licence markers. Ceruledge identifies baronessfaron with historical terms. Portrait records also name Fearless-Quit and Top_Kec. The repository's general CC BY-NC notice is not a claim that every original game sprite is licensed fan art. Artwork is excluded from Git and the VSIX.
 
@@ -147,7 +147,7 @@ The tree silhouette is blocked using authored geometry; no foreground mask is fa
 - Real VS Code: terminal lifecycle, shell command, webview ready and unbound hook candidate.
 - Actual CLI startup probes described above.
 
-Screenshots, probe state and logs stay in ignored `artifacts`. No paid service, global provider setting or existing Voracity file was changed by these tests.
+Screenshots, probe state and logs stay in ignored `artifacts`. No paid service, global provider setting or file outside this project was changed by these tests.
 
 ## Next increment
 

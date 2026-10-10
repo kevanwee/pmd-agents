@@ -214,7 +214,7 @@ function render() {
  }else{
   sidebar.append(node('div','CREDITS & SOURCES','section-label'),node('h3','A PMD fan project'));
   sidebar.append(node('p','Unaffiliated with Nintendo, Creatures Inc., GAME FREAK, The Pokémon Company or Spike Chunsoft. Pokémon and game artwork belong to their respective owners.','muted'));
-  sidebar.append(node('p','Inspired by Pixel Agents — Pablo De Lucca and contributors. Built by Kevan Wee, drawing on Voracity.','muted'));
+  sidebar.append(node('p','Inspired by Pixel Agents — Pablo De Lucca and contributors. Built by Kevan Wee.','muted'));
   const link=document.createElement('a');link.href='https://github.com/pixel-agents-hq/pixel-agents';link.textContent='Pixel Agents';sidebar.append(link);
   for(const s of [...(pack?.sprites||[]),...(pack?.dummy?[pack.dummy]:[])])sidebar.append(node('h3',s.name),node('p',[...s.artists,...(s.portraitCredits||[])].join(' · '),'credit-text'));
   sidebar.append(node('p','SpriteCollab: individual asset terms are preserved in the local pack. Original game sprites are not automatically covered by the fan-art licence.','muted'));
