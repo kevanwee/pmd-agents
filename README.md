@@ -8,7 +8,7 @@ PMD Agents is a local VS Code extension inspired by [Pixel Agents](https://githu
 ![Development](https://img.shields.io/badge/status-local%20development-e5c77d)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.109%2B-007acc)
 
-> **Development build 0.4.0.** Terminal tracking and live Codex transcript observation are verified locally. Native Claude records have been replayed successfully; live Claude chat tracking still needs validation. This is an unofficial, non-commercial fan project.
+> **Development build 0.4.1.** Terminal tracking and live Codex transcript observation are verified locally. Native Claude records have been replayed successfully; live Claude chat tracking still needs validation. This is an unofficial, non-commercial fan project.
 
 ![PMD Agents showing Eevee training, Riolu scouting and Ceruledge waiting for approval in Transform Forest](docs/screenshots/guild.png)
 
@@ -37,7 +37,7 @@ PMD Agents is a local VS Code extension inspired by [Pixel Agents](https://githu
 
 ## Pokémon storage system
 
-Select a teammate, then press **Pokémon PC** in its portrait card (or **Browse the Pokémon PC** under the team list). The storage system shows every species in National Dex order, thirty to a box, laid out like the PC in the main-series games: the box with its icons on the right, the selected Pokémon's front sprite, number and types on the left, and a bar with **Guild team** (pick which teammate you are dressing), **Fetch all game sprites** and **Return**. Opening a Pokémon pops up its menu:
+Select a teammate, then press **Pokémon PC** in its portrait card (or **Browse the Pokémon PC** under the team list). The storage system shows every species in National Dex order, thirty to a box, laid out like the PC in the main-series games: the box with its icons on the right, the selected Pokémon's front sprite, number and types on the left, and a bar with **Guild team**, **Fetch all game sprites** and **Return**. **Guild team** swaps the left panel for your sessions and their current Pokémon; the box stays open, so you can pick a teammate, choose from the box, pick the next teammate and keep going until the whole team is dressed. Opening a Pokémon pops up its menu:
 
 - **Choose** assigns it to the selected session. A species that is not in your local pack yet is imported first (**Import & choose**).
 - **Forms** lists the shiny, female and alternate forms that SpriteCollab has drawn, each marked *In roster*, *Ready*, *Portrait only* or *Not drawn yet*. Ready forms can be chosen like any species; pointing at a shiny form shows the shiny front sprite.
@@ -70,10 +70,10 @@ npm run package
 
 In VS Code:
 
-1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.4.0.vsix`.
+1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.4.1.vsix`.
 2. Run **Developer: Reload Window**, then **PMD Agents: Open Guild**.
 3. Choose a local artwork pack under **Connections → Choose asset pack**.
-4. Supported recent chats from your workspace connect automatically. **Connections → Auto-connect** controls this. If another guild window shares the same folders, choose the intended session manually.
+4. Every discovered session spawns a Pokémon as it appears. **Connections → Auto-attach** controls this (and **Workspace auto-connect** the narrower, verified-workspace mode). If another guild window shares the same folders, automatic attachment pauses and you choose the intended session manually.
 
 The extension can observe sessions without artwork; the scene needs a complete local pack. It checks development `assets/local`, then `~/.pmd-agents/assets`, or the configured `pmdAgents.assetPath`.
 
@@ -120,7 +120,7 @@ Pokémon now find routes around obstacles across the clearing, rather than movin
 
 Automatic discovery runs in the background; the Scan button is only a manual refresh. Supported files modified within 12 hours qualify. Older Codex creation-date folders are checked in batches, so resumed historical threads may take several scans to appear.
 
-**Workspace auto** intentionally includes local chats matching this workspace. It does not prove which native editor window or external terminal owns each chat. A local heartbeat registry, containing hashed folder identities, detects overlapping guild windows and pauses automatic attachment for those folders. Explicitly window-bound terminals/hooks still connect directly; unscoped hook events remain candidates. You can switch automatic attachment off or remove individual sessions, which stay excluded after reload.
+**Auto-attach** (default on) spawns a Pokémon for every discovered live session, including hook events that arrive without a window token. It is a convenience, not proof of which window owns a chat, and it pauses while another guild window shares these folders. Turning it off releases only the sessions it attached; window-bound, workspace and manual membership stay. **Workspace auto** intentionally includes local chats matching this workspace. It does not prove which native editor window or external terminal owns each chat. A local heartbeat registry, containing hashed folder identities, detects overlapping guild windows and pauses automatic attachment for those folders. Explicitly window-bound terminals/hooks still connect directly; unscoped hook events remain candidates. You can switch automatic attachment off or remove individual sessions, which stay excluded after reload.
 
 In **Activity**, use the source picker to switch between Codex, Claude and terminal journals. A terminal’s shell events are separate from a native chat’s events. Newly discovered chats become the default selection unless you have already chosen a teammate.
 
@@ -198,7 +198,7 @@ npm run package
 
 The repository is public. Earlier private-repository Actions jobs were blocked by an account billing/spending restriction; current workflow status is shown by the Checks badge. No billing settings were changed.
 
-The local build has **54 passing focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
+The local build has **55 passing focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
 
 ## Roadmap
 

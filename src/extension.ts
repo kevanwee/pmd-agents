@@ -19,8 +19,10 @@ export async function activate(context:vscode.ExtensionContext) {
  const sessions=new Sessions(context.workspaceState.get<string[]>('excludedSessions',[])),store=sessions.store;
  const roots=()=> (vscode.workspace.workspaceFolders||[]).map(f=>f.uri.fsPath);
  const autoEnabled=()=>vscode.workspace.getConfiguration('pmdAgents').get<boolean>('autoConnect',true);
+ const autoAttachEnabled=()=>vscode.workspace.getConfiguration('pmdAgents').get<boolean>('autoAttach',true);
  let lease:WorkspaceLease|undefined;
- const reconcile=()=>sessions.autoConnect(autoEnabled()?lease?.eligible||new Set():new Set());
+ // Workspace membership first (verified scope), then auto-attach for everything else; both pause while guild windows overlap.
+ const reconcile=()=>{sessions.autoConnect(autoEnabled()?lease?.eligible||new Set():new Set());sessions.autoAttach(autoAttachEnabled()&&lease?.state!=='ambiguous');};
  let panel:vscode.WebviewPanel|undefined;
  let pendingSetup:{id:string;plan:HookPlan}|undefined;
  async function beginSetup(remove=false,choice?:string){
@@ -43,7 +45,7 @@ export async function activate(context:vscode.ExtensionContext) {
  const evidence=sessions.evidence;
  let watcher:ReturnType<typeof startTranscriptWatcher>|undefined;
  let publishTimer:ReturnType<typeof setTimeout>|undefined;
- const snapshot=()=>({type:'snapshot',autoConnect:autoEnabled(),autoState:lease?.state,membership:Object.fromEntries(sessions.membership),scene:context.workspaceState.get<string>('scene','forest'),sequence:++sequence,agents:store.snapshot(),journal:sessions.journal.snapshot(),links:Object.fromEntries(sessions.links),diagnostics:watcher?.diagnostics,observationEnabled:!!watcher,evidence:Object.fromEntries(evidence),terminalNames:Object.fromEntries(terminalNames),assignments});
+ const snapshot=()=>({type:'snapshot',autoConnect:autoEnabled(),autoAttach:autoAttachEnabled(),autoState:lease?.state,membership:Object.fromEntries(sessions.membership),scene:context.workspaceState.get<string>('scene','forest'),sequence:++sequence,agents:store.snapshot(),journal:sessions.journal.snapshot(),links:Object.fromEntries(sessions.links),diagnostics:watcher?.diagnostics,observationEnabled:!!watcher,evidence:Object.fromEntries(evidence),terminalNames:Object.fromEntries(terminalNames),assignments});
  const publish=()=>{if(!publishTimer)publishTimer=setTimeout(()=>{publishTimer=undefined;if(panel)void panel.webview.postMessage(snapshot());},80);};
  const receive=(e:Event,direct:boolean,source:Evidence={source:e.provider==='terminal'?'terminal':'hook'})=>{
   sessions.receive(e,direct,source);reconcile();
@@ -66,7 +68,7 @@ export async function activate(context:vscode.ExtensionContext) {
   publish();
  };
  observe();
- context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(()=>{lease?.eligible.clear();reconcile();observe();void renew();}),vscode.workspace.onDidChangeConfiguration(e=>{if(e.affectsConfiguration('pmdAgents.observeLocalChats'))observe();if(e.affectsConfiguration('pmdAgents.autoConnect')){reconcile();publish();}}),{dispose(){watcher?.dispose();clearTimeout(publishTimer);}});
+ context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(()=>{lease?.eligible.clear();reconcile();observe();void renew();}),vscode.workspace.onDidChangeConfiguration(e=>{if(e.affectsConfiguration('pmdAgents.observeLocalChats'))observe();if(e.affectsConfiguration('pmdAgents.autoConnect')||e.affectsConfiguration('pmdAgents.autoAttach')){reconcile();publish();}}),{dispose(){watcher?.dispose();clearTimeout(publishTimer);}});
  const emit=(session:string,kind:Event['kind'],extra:Partial<Event>={})=>receive({v:1,id:randomUUID(),session,provider:'terminal',kind,at:Date.now(),...extra},true);
  function addTerminal(t:vscode.Terminal) {
   if(terminals.has(t))return terminals.get(t)!;
@@ -136,6 +138,7 @@ export async function activate(context:vscode.ExtensionContext) {
     if(msg.type==='link'&&typeof msg.id==='string'&&typeof msg.terminal==='string'){sessions.link(msg.id,msg.terminal);publish();}
     if(msg.type==='scene'&&typeof msg.id==='string'&&pack?.maps.some(m=>m.id===msg.id)){await context.workspaceState.update('scene',msg.id);}
     if(msg.type==='autoConnect'&&typeof msg.enabled==='boolean'){await vscode.workspace.getConfiguration('pmdAgents').update('autoConnect',msg.enabled,vscode.ConfigurationTarget.Workspace);reconcile();publish();}
+    if(msg.type==='autoAttach'&&typeof msg.enabled==='boolean'){await vscode.workspace.getConfiguration('pmdAgents').update('autoAttach',msg.enabled,vscode.ConfigurationTarget.Workspace);reconcile();publish();}
     if(msg.type==='rescan')await watcher?.rescan();
     if(msg.type==='character'&&typeof msg.id==='string'&&store.agents.has(msg.id)&&pack?.sprites.some(s=>s.id===msg.species)){
      assignments[msg.id]=msg.species;await context.workspaceState.update('characters',assignments);publish();

@@ -2,6 +2,14 @@
 
 The owner authorized building after the planning pass. This branch delivers a first usable slice, not the entire roadmap.
 
+## 0.4.1: spawn by default and team dressing
+
+Delivered 10 October 2026. The owner asked for Pokémon to spawn by default and for the Guild team panel to take the left column so the box stays browsable while dressing the team.
+
+`Sessions.autoAttach` attaches every discovered live session (connection observing, not ended, not excluded) with membership `auto`, after workspace auto-connect has claimed its verified sessions. The host passes `false` while the workspace lease reports overlapping guild windows, so the existing honesty rule still holds; turning the `pmdAgents.autoAttach` setting off releases only `auto` members. The Connections tab shows the toggle with its disclosure, the header badge reads Auto-attach, and the portrait card labels such sessions Auto-attached. One unit test covers spawning, exclusions, release and sources that are not observing.
+
+In the storage system, Guild team now replaces the summary panel; selecting a teammate highlights its row, and choosing from the box while the panel is open assigns without closing, with a note of who now has what. Escape closes the menu, then the panel, then the storage. Browser checks cover the panel in the left column, the box staying available, a choice keeping the storage open and the row updating.
+
 ## 0.4.0: the Pokémon storage system
 
 Delivered 10 October 2026. The owner asked for a PC like the main-series games: a living Pokédex in National Dex order where a Pokémon opens a menu for choosing it, its forms, or more detail. It is built here first; transfer to Voracity or the portfolio is a later decision.

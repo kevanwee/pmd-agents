@@ -41,12 +41,16 @@ await page.evaluate(()=>window.postMessage({type:'gameTypes',types:{'0025':['ele
 await page.evaluate(()=>window.postMessage({type:'gameAssets',ready:{'icon:0025':'eevee/portrait.png','front:0025':'eevee/portrait.png','shiny:0025':'riolu/portrait.png','front:0133':'eevee/portrait.png','icon:0133':'eevee/portrait.png'},failed:['icon:0200','front:0200','shiny:0200']},'*'));
 await page.locator('.gs-front[alt="Eevee"]').waitFor();assert.equal(await page.locator('.gs-types .type').textContent(),'NORMAL');
 assert.equal(await page.locator('.pc-slot[data-dex="25"] img.gs-icon').count(),1);assert.equal(await page.locator('.pc-slot[data-dex="200"] .gs-icon-missing').count(),1);
-await page.getByRole('button',{name:'Guild team',exact:true}).click();assert.equal(await page.locator('.gs-party-row').count(),3);
+// Guild team replaces the summary on the left; the box stays browsable and choices keep the storage open while the team is dressed.
+await page.getByRole('button',{name:'Guild team',exact:true}).click();assert.equal(await page.locator('.gs-summary .gs-party-row').count(),3);assert.equal(await page.locator('.pc-slot').count(),30);
 await page.locator('.gs-party-row').filter({hasText:'Claude Code · Riolu'}).click();
-assert.equal(await page.locator('.gs-rows dd').last().textContent(),'Claude Code · Riolu','Guild team picks the teammate being dressed');
-await page.locator('.gs-party-row').first().waitFor({state:'detached'});
-await page.locator('.gs-party-row').count().then(n=>assert.equal(n,0));
-await page.getByRole('button',{name:'Guild team',exact:true}).click();await page.locator('.gs-party-row').filter({hasText:'Codex · Eevee'}).click();
+assert.equal(await page.locator('.gs-party-row[aria-pressed=true]').textContent(),'Claude Code · Riolu','Guild team picks the teammate being dressed');
+await page.getByRole('button',{name:/#004 Charmander/}).click();await page.getByRole('button',{name:'Choose',exact:true}).click();
+assert.ok(await page.getByRole('dialog',{name:'Pokémon storage'}).isVisible(),'the storage stays open while the team panel is up');
+assert.equal(await page.locator('.gs-party-row[aria-pressed=true]').textContent(),'Claude Code · Charmander');assert.ok(await page.getByText('Claude Code now has Charmander.',{exact:true}).isVisible());
+await page.locator('.gs-party-row').filter({hasText:'Codex · Eevee'}).click();
+await page.getByRole('button',{name:'Guild team',exact:true}).click();assert.equal(await page.locator('.gs-party-row').count(),0);
+assert.equal(await page.locator('.gs-rows dd').last().textContent(),'Codex · Eevee');
 // Switch to the guild view: PMD portraits are requested only for species outside the pack.
 await page.getByRole('button',{name:/Switch to the guild view/}).click();
 assert.equal(await page.locator('.pc-body').getAttribute('data-view'),'guild');
@@ -54,6 +58,7 @@ const portraitRequest=(await page.evaluate(()=>window.sent)).find(m=>m.type==='d
 assert.ok(portraitRequest.paths.includes('0025')&&!portraitRequest.paths.includes('0001'),'only species outside the pack need fetched portraits');
 await page.evaluate(()=>window.postMessage({type:'dexPortraits',ready:{'0025':'eevee/portrait.png'},failed:['0200']},'*'));
 await page.locator('.pc-slot[data-dex="25"] img').waitFor();assert.equal(await page.locator('.pc-slot[data-dex="200"] img').count(),0);
+await page.getByRole('searchbox').fill('#133');await page.getByRole('searchbox').press('Enter');
 await page.keyboard.press('ArrowLeft');assert.equal(await page.locator('.pc-slot[aria-pressed=true]').getAttribute('data-dex'),'25');
 await page.keyboard.press('Enter');
 assert.deepEqual(await page.evaluate(()=>[...document.querySelectorAll('.pc-menu button')].map(b=>b.textContent)),['Import & choose','Forms (3)','Summary','Back']);

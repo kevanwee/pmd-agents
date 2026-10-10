@@ -8,7 +8,7 @@ export class Sessions {
  readonly evidence=new Map<string,Evidence>();
  readonly links=new Map<string,string>();
  readonly journal=new ActivityJournal();
- readonly membership=new Map<string,'window'|'manual'|'workspace'>();
+ readonly membership=new Map<string,'window'|'manual'|'workspace'|'auto'>();
  private excluded=new Set<string>();
  private hookAt=new Map<string,number>();
  constructor(excluded:string[]=[]){this.excluded=new Set(excluded.slice(-128));}
@@ -18,6 +18,16 @@ export class Sessions {
    const source=this.evidence.get(a.id),allowed=!!source?.workspace&&eligible.has(source.workspace)&&!a.ended&&!this.excluded.has(a.id);
    if(allowed&&source?.connection==='observing'&&!a.attached){this.store.attach(a.id);this.membership.set(a.id,'workspace');}
    if(!allowed&&this.membership.get(a.id)==='workspace'){this.store.detach(a.id);this.membership.delete(a.id);this.links.delete(a.id);}
+  }
+ }
+ /** Auto-attach: every discovered live session joins the guild as it appears, whatever its source. This is a disclosed
+  *  convenience, not proof of which window owns a chat; the host disables it while guild windows overlap. Exclusions,
+  *  manual and window-bound membership are untouched. Turning it off releases only the sessions it attached. */
+ autoAttach(enabled:boolean){
+  for(const a of this.store.agents.values()){
+   const member=this.membership.get(a.id);
+   if(enabled&&!a.attached&&!a.ended&&!this.excluded.has(a.id)&&this.evidence.get(a.id)?.connection==='observing'){this.store.attach(a.id);this.membership.set(a.id,'auto');}
+   if(!enabled&&member==='auto'){this.store.detach(a.id);this.membership.delete(a.id);this.links.delete(a.id);}
   }
  }
 

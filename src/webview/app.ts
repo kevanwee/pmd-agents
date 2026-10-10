@@ -6,7 +6,7 @@ import {Placement} from '../placement';
 import {Navigator,terrains,segment,canStand} from '../navigation';
 import {frameAt,facing,type Pack,type Species,type Point} from '../world';
 import {PokemonPc} from './pc';
-declare global {interface Window {PMD_BOOT:{scene?:string;autoConnect?:boolean;autoState?:string;membership?:Record<string,string>;pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;unsupported:number;readErrors:number;lastScan:number;historyFolders?:number;historyChecked?:number;historyCapped?:boolean};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
+declare global {interface Window {PMD_BOOT:{scene?:string;autoConnect?:boolean;autoAttach?:boolean;autoState?:string;membership?:Record<string,string>;pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;unsupported:number;readErrors:number;lastScan:number;historyFolders?:number;historyChecked?:number;historyCapped?:boolean};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
 const host=window.acquireVsCodeApi?.();
 const boot=window.PMD_BOOT;
 const pack=boot.pack;
@@ -15,7 +15,7 @@ const scene=()=>pack?.maps.find(m=>m.id===sceneId)||pack?.maps[0];
 const terrain=()=>terrains[scene()?.id||'meadow'];
 const navigation=new Map<string,Navigator>();
 const navigator=()=>{const id=scene()?.id||'meadow';if(!navigation.has(id))navigation.set(id,new Navigator(terrain()));return navigation.get(id)!;};
-let autoConnect=boot.autoConnect??true,autoState=boot.autoState,membership=boot.membership||{};
+let autoConnect=boot.autoConnect??true,autoAttach=boot.autoAttach??true,autoState=boot.autoState,membership=boot.membership||{};
 let worldTime=0,showPaths=false,zoom=1,pan={x:0,y:0},view={x:0,y:0,scale:1};
 
 let agents=boot.agents||[],assignments=boot.assignments||{},terminalNames=boot.terminalNames||{};
@@ -80,7 +80,7 @@ function render() {
  const team=shown(),candidates=agents.filter(a=>!a.attached&&!a.ended);
  if(!selectedByUser&&team.find(a=>a.id===selected)?.provider==='terminal'){const chat=team.find(a=>a.provider!=='terminal');if(chat)selected=chat.id;}
  if(!team.some(a=>a.id===selected)&&!(tab==='activity'&&agents.some(a=>a.id===selected&&a.attached&&a.ended)))selected=(team.find(a=>a.provider!=='terminal')||team[0])?.id||'';
- app.querySelector('#mode')!.textContent=demo?'DEMO · simulated sessions':autoConnect?'Workspace auto':'Current window';
+ app.querySelector('#mode')!.textContent=demo?'DEMO · simulated sessions':autoAttach?'Auto-attach':autoConnect?'Workspace auto':'Current window';
  app.querySelector('.scene-heading h2')!.textContent=scene()?.name||'Exploration guild';
  const mapSelect=app.querySelector<HTMLSelectElement>('#scene')!;
  if(!mapSelect.options.length)for(const map of pack?.maps||[]){const option=document.createElement('option');option.value=map.id;option.textContent=map.name;mapSelect.append(option);}
@@ -108,7 +108,7 @@ function render() {
   const body=node('div','','dialogue-body');
   body.append(node('div',label(a)+(sp?' · '+sp.name:''),'speaker'));
   body.append(node('h3',displayStatus(a)));
-  body.append(node('p',demo?'Simulated activity':(membership[a.id]==='workspace'?'Auto-connected · ':'')+sourceLabel(a)+' · last seen '+new Date(a.lastSeen).toLocaleTimeString()+(links[a.id]?' · linked to '+(terminalNames[links[a.id]]||'terminal'):'')));
+  body.append(node('p',demo?'Simulated activity':(membership[a.id]==='workspace'?'Auto-connected · ':membership[a.id]==='auto'?'Auto-attached · ':'')+sourceLabel(a)+' · last seen '+new Date(a.lastSeen).toLocaleTimeString()+(links[a.id]?' · linked to '+(terminalNames[links[a.id]]||'terminal'):'')));
   details.append(body);
   const actions=node('div','','detail-actions');
   if(!demo&&!a.ended)actions.append(button(focusLabel(a),()=>send({type:'focus',id:a.id}),'primary'));
@@ -165,7 +165,9 @@ function render() {
  }else if(tab==='connections'){
   sidebar.append(node('div','PROVIDER CONNECTIONS','section-label'));
   sidebar.append(node('h3','Keep your own chats'),node('p','Supported local chats are discovered continuously. Workspace auto mode brings them into the guild without scanning or adding each one.','muted'));
-  const auto=button(autoConnect?'Auto-connect: on':'Auto-connect: off',()=>send({type:'autoConnect',enabled:!autoConnect}));auto.setAttribute('aria-pressed',String(autoConnect));sidebar.append(auto);
+  const spawn=button(autoAttach?'Auto-attach: on':'Auto-attach: off',()=>send({type:'autoAttach',enabled:!autoAttach}));spawn.setAttribute('aria-pressed',String(autoAttach));sidebar.append(spawn);
+  sidebar.append(node('p',autoAttach?'Every discovered session spawns a Pokémon as it appears, whatever its source. This is a convenience, not proof of which window owns a chat; it pauses while another guild window shares these folders.':'Only window-bound terminals and hooks, workspace chats and sessions you attach join the guild.','muted'));
+  const auto=button(autoConnect?'Workspace auto-connect: on':'Workspace auto-connect: off',()=>send({type:'autoConnect',enabled:!autoConnect}));auto.setAttribute('aria-pressed',String(autoConnect));sidebar.append(auto);
   sidebar.append(node('p',autoState==='ambiguous'?'Another guild window shares these folders. Automatic attachment is paused for overlapping folders; choose the intended sessions below.':autoState==='unavailable'?'Checking which guild windows share this workspace…':autoConnect?'Workspace chats reconnect automatically. This includes matching local chats, not verified native-window ownership. Removed sessions stay excluded.':'Automatic attachment is off. Window-bound terminals and hooks still connect automatically.','muted'));
   sidebar.append(node('p','Observer hooks are optional for local transcript observation. Install once for richer lifecycle signals.','muted'));
   for(const provider of ['codex','claude'])sidebar.append(button('Connect '+(provider==='codex'?'Codex':'Claude'),()=>send({type:'setup',provider}),'primary'));
@@ -351,7 +353,7 @@ window.addEventListener('message',event=>{
  const m=event.data;
  if(m.type==='hookSetup'){hookSetup=m;hookResult=undefined;tab='connections';render();}
  if(m.type==='hookResult'){hookSetup=undefined;hookResult=m;tab='connections';render();}
- if(m.type==='snapshot'){autoConnect=m.autoConnect??autoConnect;autoState=m.autoState;membership=m.membership||{};journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
+ if(m.type==='snapshot'){autoConnect=m.autoConnect??autoConnect;autoAttach=m.autoAttach??autoAttach;autoState=m.autoState;membership=m.membership||{};journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
  if(m.type==='visibility'){visible=m.visible;restart();}
  if(m.type==='dex')pc.setDex(m);
  if(m.type==='dexPortraits')pc.portraitsReady(m);
