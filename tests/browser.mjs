@@ -1,6 +1,6 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
-import {mkdir} from 'node:fs/promises';
+import {mkdir,readFile} from 'node:fs/promises';
 import {startPreview} from './preview-server.mjs';
 await mkdir('artifacts',{recursive:true});
 const preview=await startPreview();
@@ -17,9 +17,49 @@ await page.getByRole('button',{name:'Quiet',exact:true}).click();
 const before=await page.locator('canvas').getAttribute('data-simulation-time');await page.waitForTimeout(500);
 assert.equal(await page.locator('canvas').getAttribute('data-simulation-time'),before);
 await page.getByRole('button',{name:'Credits',exact:true}).click();assert.ok(await page.getByText('A PMD fan project',{exact:true}).isVisible());
+// The storage system: National Dex boxes, forms behind a menu, keyboard navigation, and a choice that reaches the host.
+const manifest=JSON.parse(await readFile('assets/local/manifest.json','utf8'));
+const dexSpecies=(dex,name,forms)=>({dex,name,id:name.toLowerCase(),forms:forms||[{path:String(dex).padStart(4,'0'),label:'Normal',id:name.toLowerCase(),ready:true,portrait:true,complete:2,credit:'CHUNSOFT',actions:36}]});
+const dexFixture={version:1,revision:'47e5b9920bc5b2b491c53b18076300dc6813f103',built:'2026-10-10T00:00:00.000Z',species:[
+ ...['Bulbasaur','Ivysaur','Venusaur','Charmander','Charmeleon','Charizard','Squirtle','Wartortle','Blastoise'].map((n,i)=>dexSpecies(i+1,n)),
+ dexSpecies(25,'Pikachu',[{path:'0025',label:'Normal',id:'pikachu',ready:true,portrait:true,complete:2,credit:'CHUNSOFT',actions:36},{path:'0025/0000/0001',label:'Shiny',id:'pikachu-shiny',ready:true,portrait:true,complete:2,credit:'Audino',actions:0},{path:'0025/0001',label:'Gigantamax',id:'pikachu-gigantamax',ready:false,portrait:true,complete:0,credit:'',actions:0}]),
+ dexSpecies(133,'Eevee'),...Array.from({length:26},(_,n)=>dexSpecies(200+n,'Mon'+n))]};
+await page.getByRole('button',{name:'Team',exact:true}).click();
+await page.getByRole('button',{name:/Open the Pokémon storage system/}).click();
+assert.ok(await page.getByRole('dialog',{name:'Pokémon storage'}).isVisible());assert.ok((await page.evaluate(()=>window.sent)).some(m=>m.type==='dex'),'the catalog is requested from the host');
+await page.evaluate(d=>window.postMessage({type:'dex',dex:d},'*'),dexFixture);
+await page.locator('.pc-slot').first().waitFor();
+assert.equal(await page.locator('.pc-head h2').textContent(),'Box 1');assert.equal(await page.locator('.pc-slot').count(),30);
+assert.equal(await page.locator('.pc-slot[aria-pressed=true]').getAttribute('aria-label'),'#133 Eevee · In roster','opens on the teammate\'s current Pokémon');
+const portraitRequest=(await page.evaluate(()=>window.sent)).find(m=>m.type==='dexPortraits');
+assert.ok(portraitRequest.paths.includes('0025')&&!portraitRequest.paths.includes('0001'),'only species outside the pack need fetched portraits');
+await page.evaluate(()=>window.postMessage({type:'dexPortraits',ready:{'0025':'eevee/portrait.png'},failed:['0200']},'*'));
+assert.equal(await page.locator('.pc-slot[data-dex="25"] img').count(),1);assert.equal(await page.locator('.pc-slot[data-dex="200"] img').count(),0);
+await page.keyboard.press('ArrowLeft');assert.equal(await page.locator('.pc-slot[aria-pressed=true]').getAttribute('data-dex'),'25');
+await page.keyboard.press('Enter');
+assert.deepEqual(await page.evaluate(()=>[...document.querySelectorAll('.pc-menu button')].map(b=>b.textContent)),['Import & choose','Forms (3)','Summary','Back']);
+await page.getByRole('button',{name:'Summary',exact:true}).click();assert.ok(await page.getByText('Ready to train',{exact:true}).isVisible());
+await page.keyboard.press('Escape');await page.getByRole('button',{name:'Forms (3)',exact:true}).click();
+assert.ok(await page.getByRole('button',{name:'Gigantamax · Portrait only',exact:true}).isDisabled());
+await page.getByRole('button',{name:'Shiny · Ready',exact:true}).click();
+assert.deepEqual((await page.evaluate(()=>window.sent)).at(-1),{type:'dexImport',path:'0025/0000/0001',id:'pikachu-shiny'});
+assert.ok(await page.getByRole('button',{name:'Shiny · Importing…',exact:true}).isVisible());
+await page.screenshot({path:'artifacts/guild-pc.png'});
+const imported={...manifest.sprites.find(s=>s.id==='eevee'),id:'pikachu-shiny',name:'Pikachu (Shiny)',dex:25,form:{path:'0025/0000/0001',label:'Shiny'}};
+await page.evaluate(s=>window.postMessage({type:'dexImport',path:'0025/0000/0001',id:'pikachu-shiny',species:s},'*'),imported);
+await page.getByRole('dialog',{name:'Pokémon storage'}).waitFor({state:'hidden'});
+assert.equal(await page.locator('.speaker').textContent(),'Codex · Pikachu (Shiny)','the imported form is chosen for the selected session');
+await page.getByRole('button',{name:/Open the Pokémon storage system/}).click();
+await page.getByRole('searchbox').fill('squir');await page.getByRole('searchbox').press('Enter');
+assert.equal(await page.locator('.pc-slot[aria-pressed=true]').getAttribute('data-dex'),'7');
+await page.keyboard.press('PageDown');assert.equal(await page.locator('.pc-head h2').textContent(),'Box 2');assert.equal(await page.locator('.pc-slot').count(),7);
+await page.keyboard.press('Escape');await page.getByRole('dialog',{name:'Pokémon storage'}).waitFor({state:'hidden'});
 await page.setViewportSize({width:320,height:850});await page.getByRole('button',{name:'Team',exact:true}).click();
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
 await page.screenshot({path:'artifacts/guild-narrow.png',fullPage:true});
+await page.getByRole('button',{name:'Browse the Pokémon PC',exact:true}).click();await page.locator('.pc-slot').first().waitFor();
+assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'the storage system fits a 320px panel');
+await page.screenshot({path:'artifacts/guild-pc-narrow.png'});await page.keyboard.press('Escape');
 await page.getByRole('button',{name:'Exit demo'}).click();assert.equal(await page.locator('.team-row').count(),0);
 await page.evaluate(()=>window.postMessage({type:'snapshot',agents:[{id:'codex:fixture',provider:'codex',attached:false,activity:'working',attention:'none',outcome:'',ended:false,lastSeen:Date.now(),tools:{}}],evidence:{'codex:fixture':{source:'transcript',version:'0.162.0',client:'VS Code',partial:true}}},'*'));
 await page.getByRole('button',{name:'Connections',exact:true}).click();
@@ -36,7 +76,7 @@ await page.getByRole('button',{name:'Resume motion',exact:true}).click();
 const initial=await page.locator('canvas').getAttribute('data-training');
 await page.waitForFunction(p=>document.querySelector('canvas').dataset.training!==p,initial,{timeout:5000});
 await page.waitForFunction(()=>JSON.parse(document.querySelector('canvas').dataset.training).some(a=>a.hit),null,{timeout:6000});
-assert.equal(await page.locator('select[aria-label="Pokémon for selected session"] option').count(),12);
+assert.ok(await page.locator('select[aria-label="Pokémon for selected session"] option').count()>=12,'the roster select lists the pack, including storage-system imports');
 for(const name of ['bulbasaur','ivysaur','venusaur','charmander','charmeleon','charizard','squirtle','wartortle','blastoise']){
  await page.getByRole('combobox',{name:'Pokémon for selected session'}).selectOption(name);
  await page.waitForFunction(()=>[...document.images].every(i=>i.complete&&i.naturalWidth));
@@ -111,4 +151,4 @@ await maps.setViewportSize({width:320,height:850});assert.equal(await maps.evalu
 await maps.emulateMedia({reducedMotion:'reduce'});await maps.waitForTimeout(100);const frozen=await maps.locator('canvas').getAttribute('data-world-time');await maps.waitForTimeout(250);assert.equal(await maps.locator('canvas').getAttribute('data-world-time'),frozen);
 await maps.getByRole('button',{name:'Activity',exact:true}).click();assert.ok(await maps.getByRole('combobox',{name:'Activity source'}).isVisible());
 assert.deepEqual(errors,[]);
-await browser.close();preview.close();console.log('Browser checks passed: motion, stable placement, journal, links, demo isolation, credits and narrow layout. Screenshots in artifacts/.');
+await browser.close();preview.close();console.log('Browser checks passed: motion, stable placement, journal, links, demo isolation, credits, storage system and narrow layout. Screenshots in artifacts/.');

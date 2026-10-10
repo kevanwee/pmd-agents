@@ -18,3 +18,5 @@
 - Automatic discovery and connection should handle normal use without Scan/Connect/Add on every reload. Label workspace-scoped automatic matching honestly, preserve exclusions, and pause automatic claims when guild windows overlap.
 - The user explicitly authorized making pmd-agents public. No additional visibility confirmation is required.
 - The user briefly thought Codex observation was broken, then clarified it was working. Preserve the functioning feed; make the selected journal’s provider clearer instead of diagnosing a nonexistent outage.
+- 10 October 2026: The Pokémon storage system (a PC like the main-series games, National Dex order, forms behind a menu) is built here first; the owner will then judge what transfers to Voracity and the portfolio. Do not add Claude attribution to commits or pull requests in this repository.
+- Availability must come from SpriteCollab's own records and the importer's validation of real sheets, never from a static icon list. Recolours carry a completion phase without per-file flags; the phase decides, and the importer still verifies every sheet.

@@ -5,6 +5,7 @@ import {trainingAt} from '../training';
 import {Placement} from '../placement';
 import {Navigator,terrains,segment,canStand} from '../navigation';
 import {frameAt,facing,type Pack,type Species,type Point} from '../world';
+import {PokemonPc} from './pc';
 declare global {interface Window {PMD_BOOT:{scene?:string;autoConnect?:boolean;autoState?:string;membership?:Record<string,string>;pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;unsupported:number;readErrors:number;lastScan:number;historyFolders?:number;historyChecked?:number;historyCapped?:boolean};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
 const host=window.acquireVsCodeApi?.();
 const boot=window.PMD_BOOT;
@@ -50,6 +51,10 @@ const button=(text:string,action:()=>void,className='')=>{const b=document.creat
 const node=(tag:string,text:string,className='')=>{const el=document.createElement(tag);el.textContent=text;el.className=className;return el;};
 const species=(a:Agent):Species|undefined=>pack?.sprites.find(s=>s.id===assignments[a.id])||pack?.sprites[[...a.id].reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,0)%Math.min(3,pack.sprites.length)];
 const label=(a:Agent)=>a.provider==='terminal'?(terminalNames[a.id]||'Terminal'):a.provider==='codex'?'Codex':'Claude Code';
+/** The storage system chooses a Pokémon (or form) for the selected session; imports arrive from the host and join the pack. */
+const pc=new PokemonPc(app,{send,assetBase:boot.assetBase,pack:()=>pack,
+ session:()=>{const a=agents.find(x=>x.id===selected&&x.attached&&!x.ended);return a?{id:a.id,label:label(a),species:species(a)?.id}:undefined;},
+ choose:id=>{if(!selected||!pack?.sprites.some(s=>s.id===id))return;assignments[selected]=id;if(!demo)send({type:'character',id:selected,species:id});render();}});
 const shown=()=>{const linked=new Set(demo?[]:Object.entries(links).filter(([id])=>agents.some(a=>a.id===id&&a.attached&&!a.ended)).map(([,terminal])=>terminal));return agents.filter(a=>a.attached&&!a.ended&&!linked.has(a.id));};
 const inClearing=()=>{const pages=placement.pages(),page=pages.includes(area)?area:pages[0]??0;return shown().filter(a=>placement.page(a.id)===page);};
 function ensureActors(){
@@ -105,7 +110,8 @@ function render() {
   if(!demo&&!a.ended)actions.append(button('Manage session',()=>{tab='connections';render();}));
   if(pack){const select=document.createElement('select');select.dataset.focusKey='species:'+a.id;select.setAttribute('aria-label','Pokémon for selected session');
    for(const s of pack.sprites){const o=document.createElement('option');o.value=s.id;o.textContent=s.name;select.append(o);}
-   select.value=sp!.id;select.onchange=()=>{assignments[a.id]=select.value;if(!demo)send({type:'character',id:a.id,species:select.value});render();};actions.append(select);}
+   select.value=sp!.id;select.onchange=()=>{assignments[a.id]=select.value;if(!demo)send({type:'character',id:a.id,species:select.value});render();};actions.append(select);
+   const storage=button('Pokémon PC',()=>pc.open(storage));storage.setAttribute('aria-label','Open the Pokémon storage system to choose a species or form');actions.append(storage);}
   details.append(actions);
  }else{details.append(node('span','✦','dialogue-star'),node('div','Select a teammate to see its activity.','dialogue-body'));}
  sidebar.replaceChildren();
@@ -125,6 +131,7 @@ function render() {
    sidebar.append(row);
   }
   if(candidates.length)sidebar.append(button(candidates.length+' sessions available to attach',()=>{tab='connections';render();},'attach-summary'));
+  if(pack){const storage=button('Browse the Pokémon PC',()=>pc.open(storage),'attach-summary');sidebar.append(storage);}
  }else if(tab==='activity'){
   sidebar.append(node('div','GUILD JOURNAL','section-label'));
   if(!a)sidebar.append(node('p','Select a teammate to see its observed activity.','muted'));
@@ -341,6 +348,9 @@ window.addEventListener('message',event=>{
  if(m.type==='hookResult'){hookSetup=undefined;hookResult=m;tab='connections';render();}
  if(m.type==='snapshot'){autoConnect=m.autoConnect??autoConnect;autoState=m.autoState;membership=m.membership||{};journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
  if(m.type==='visibility'){visible=m.visible;restart();}
+ if(m.type==='dex')pc.setDex(m);
+ if(m.type==='dexPortraits')pc.portraitsReady(m);
+ if(m.type==='dexImport'){if(m.species&&pack&&!pack.sprites.some(s=>s.id===m.species.id))pack.sprites.push(m.species);pc.imported(m);}
 });
 let drag:{x:number;y:number;px:number;py:number}|undefined,moved=false;
 canvas.addEventListener('pointerdown',e=>{if(zoom>1){drag={x:e.clientX,y:e.clientY,px:pan.x,py:pan.y};moved=false;canvas.setPointerCapture(e.pointerId);}});
