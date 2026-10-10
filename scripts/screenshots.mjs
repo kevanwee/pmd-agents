@@ -31,7 +31,7 @@ try{
  await page.evaluate(s=>window.postMessage({type:'dex',dex:{version:1,revision:'47e5b9920bc5b2b491c53b18076300dc6813f103',built:'2026-10-10T00:00:00.000Z',species:s}},'*'),species);
  await page.locator('.pc-slot').first().waitFor();await page.getByRole('searchbox').fill('#4');await page.getByRole('searchbox').press('Enter');
  // Game sprites and types come from the local pack when the game import has run; otherwise the PMD stand-ins are captured.
- const game={ready:{},failed:[]};for(const s of species){const p=String(s.dex).padStart(4,'0');for(const [k,f] of [['icon','game/icons/'+p+'.png'],['front','game/front/'+p+'.png'],['shiny','game/shiny/'+p+'.png']])if(existsSync('assets/local/'+f))game.ready[k+':'+p]=f;else game.failed.push(k+':'+p);}
+ const game={ready:{},failed:[]};for(const s of species){const p=String(s.dex).padStart(4,'0');for(const [k,f] of [['icon','game/box-icons/'+p+'.png'],['front','game/front/'+p+'.png'],['shiny','game/shiny/'+p+'.png']])if(existsSync('assets/local/'+f))game.ready[k+':'+p]=f;else game.failed.push(k+':'+p);}
  let types={};try{types=JSON.parse(await readFile('assets/local/game/types.json','utf8')).types||{};}catch{}
  await page.evaluate(g=>window.postMessage({type:'gameAssets',...g},'*'),game);await page.evaluate(t=>window.postMessage({type:'gameTypes',types:t},'*'),types);
  await page.locator('.pc-slot[aria-pressed=true]').click();await page.getByRole('button',{name:'Forms (2)',exact:true}).click();await page.getByRole('button',{name:'Shiny · Ready',exact:true}).hover();await page.waitForTimeout(300);

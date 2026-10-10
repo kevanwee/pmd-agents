@@ -4,23 +4,26 @@ import {createHash} from 'node:crypto';
 import {readFile,stat} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import type {Receipt,Fetch} from './importer';
-/** Main-series game sprites and box icons come from PokeAPI's sprite repository, and types from PokeAPI's CSV data, both pinned. */
+import smogon from './smogon-icons.json';
+/** Front sprites come from PokeAPI's sprite repository and types from PokeAPI's CSV data, both pinned. Box icons come from
+ *  Smogon's sprite repository (pinned): one Gen 6/7 menu-sprite style for every species, so no box mixes icon sizes. */
 export const SPRITES_REV='35fdbe9bdec8f519f882c3edc3c0185f08af4d86';
 export const DATA_REV='c80757193bd0889054e36f4209762360bdaa4b95';
 export const SPRITES_RAW=`https://raw.githubusercontent.com/PokeAPI/sprites/${SPRITES_REV}/sprites/`;
 export const DATA_RAW=`https://raw.githubusercontent.com/PokeAPI/pokeapi/${DATA_REV}/data/v2/csv/`;
-/** Generation VIII box icons stop at Calyrex; later species fall back to a scaled front sprite in the view. */
-export const LAST_ICON=898;
+export const ICONS_RAW=`https://raw.githubusercontent.com/smogon/sprites/${smogon.revision}/${smogon.directory}/`;
+const ICONS:Record<string,string>=smogon.icons;
 export const LAST_DEX=1025;
 export const TYPES=['normal','fire','water','grass','electric','ice','fighting','poison','ground','flying','psychic','bug','rock','ghost','dragon','dark','steel','fairy'];
 export type GameTypes=Record<string,string[]>;
 export interface GameAsset {key:string;url:string;file:string;limit?:number}
 const pad=(n:number)=>String(n).padStart(4,'0');
-/** The two or three files the storage view shows per species: box icon, front sprite and its shiny. */
+/** The three files the storage view shows per species: box icon, front sprite and its shiny. */
 export function gameAssets(dex:number):GameAsset[] {
  if(!Number.isInteger(dex)||dex<1||dex>LAST_DEX)return [];
  const out:GameAsset[]=[{key:'front:'+pad(dex),url:SPRITES_RAW+'pokemon/'+dex+'.png',file:'game/front/'+pad(dex)+'.png'},{key:'shiny:'+pad(dex),url:SPRITES_RAW+'pokemon/shiny/'+dex+'.png',file:'game/shiny/'+pad(dex)+'.png'}];
- if(dex<=LAST_ICON)out.unshift({key:'icon:'+pad(dex),url:SPRITES_RAW+'pokemon/versions/generation-viii/icons/'+dex+'.png',file:'game/icons/'+pad(dex)+'.png'});
+ // A new folder: icons cached by earlier versions came from a larger, differently scaled set.
+ out.unshift({key:'icon:'+pad(dex),url:ICONS_RAW+ICONS[dex],file:'game/box-icons/'+pad(dex)+'.png'});
  return out;
 }
 /** Fetch one URL with a size bound. */
@@ -77,5 +80,5 @@ export async function loadTypes(root:string,get:(url:string,limit?:number)=>Prom
  await atomicWrite(path,JSON.stringify({revision:DATA_REV,source:DATA_RAW,licence:'PokeAPI data, BSD-3-Clause',types})+'\n');
  return types;
 }
-/** Every species' icon, front and shiny front: about 2,900 files at the pinned revision. */
+/** Every species' icon, front and shiny front: 3,075 files at the pinned revisions. */
 export function allGameAssets(){const out:GameAsset[]=[];for(let dex=1;dex<=LAST_DEX;dex++)out.push(...gameAssets(dex));return out;}
