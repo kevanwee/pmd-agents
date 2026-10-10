@@ -79,11 +79,11 @@ The extension can observe sessions without artwork; the scene needs a complete l
 
 ### Import artwork
 
-Source sheets and game maps are **not included in Git or the VSIX**. The current importer downloads pinned SpriteCollab sheets and reads the Thunder Meadow and Transform Forest maps, stone animation and Pixelify Sans font from a local Voracity checkout. Without those local map/font inputs, obtain a compatible pack first; cloning this repository alone does not provide them.
+Source sheets and game maps are **not included in Git or the VSIX**. The importer downloads pinned SpriteCollab sheets, the Thunder Meadow and Transform Forest maps and stone animation from the Pamtre Berry mirror, and Pixelify Sans from its upstream repository. Each map and font download is checked against a recorded SHA-256 hash; nothing else is needed beyond Python and Pillow.
 
 ```powershell
 python -m pip install Pillow
-python scripts/import-assets.py --voracity "path/to/voracity"
+python scripts/import-assets.py
 ```
 
 The importer writes `assets/local/manifest.json`, original credit records and file hashes. Use `--output` to select another local pack directory. See [asset handling and credits](docs/ATTRIBUTION.md).
@@ -200,7 +200,7 @@ The repository is public. Earlier private-repository Actions jobs were blocked b
 
 The local build has **63 passing focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
 
-See the [0.4.3 code review and PC portability plan](docs/REVIEW-2026-10-10.md) for findings, remaining reliability work and the proposed Kevanwee/Voracity integration.
+See the [0.4.3 code review](docs/REVIEW-2026-10-10.md) for findings and remaining reliability work.
 
 ## Roadmap
 
@@ -222,7 +222,7 @@ The [full plan](docs/PLAN.md) separates delivered work from future proposals. [R
 
 ## Credits and licence
 
-Built by **Kevan Wee**. Inspired by **Pablo De Lucca and the Pixel Agents contributors**; no Pixel Agents source code is copied in this implementation. [The Office](https://github.com/kevanwee/theoffice) is the archived predecessor; Voracity supplied the visual references and local asset-pipeline lessons.
+Built by **Kevan Wee**. Inspired by **Pablo De Lucca and the Pixel Agents contributors**; no Pixel Agents source code is copied in this implementation. [The Office](https://github.com/kevanwee/theoffice) is the archived predecessor.
 
 Sprite/portrait records credit **CHUNSOFT, baronessfaron, Fearless-Quit, Top_Kec, JFain, 0palite, Emboarger, Emmuffin, Grimlin, G〜 and bwappi**, plus contributors recorded upstream as Discord IDs **199989579682414592** and **276175146304405514**, sourced through [PMD SpriteCollab](https://github.com/PMDCollab/SpriteCollab). Pokémon imported through the storage system carry their own contributors from the same credit records into the in-guild Credits view and the local manifest. The storage system's box icons, front sprites and shiny sprites are main-series game artwork (Nintendo, Creatures Inc., GAME FREAK) obtained through the [PokeAPI sprites repository](https://github.com/PokeAPI/sprites) at a pinned revision, and its type data comes from [PokeAPI](https://github.com/PokeAPI/pokeapi) (BSD-3-Clause); both stay in the local pack with receipts. Original game sprites and individual fan-art terms are distinguished in the pack; a repository-wide fan-art licence is not assumed to cover every asset. **Pixelify Sans Project Authors** provide the font under SIL OFL. Transform Forest and its stone frames credit **Toastypk**, with the **Pamtre Berry / Taliax** mirror and original source receipts retained locally. Thunder Meadow is a local game-map reference; its original ripper remains unresolved. Screenshots contain rendered third-party artwork and retain those attributions.
 

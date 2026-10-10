@@ -51,16 +51,12 @@ Local inventory, without changing configuration:
 
 Directory presence does not prove which version is active or that hooks work. In particular, the Claude CLI and extension differ substantially. No private chats or credential files were inspected. Runtime compatibility remains a Phase 0 deliverable.
 
-## Voracity references inspected
+## Scene references
 
-| Existing material | What it establishes |
+| Material | What it establishes |
 | --- | --- |
-| `public/eevee-base/background.png`, `sources.json` | Transform Forest map, original ripper Toastypk, Spriters Resource listing, Pamtre Berry mirror, hashes |
-| `src/pokemon/eevee-base.ts` | Native 480 × 312 coordinates, measured clearing and stone exclusion, paths rather than unconstrained wandering |
-| `public/pmd/thunder-meadow.png`, `src/pokemon/meadow.ts` | 456 × 335 map, walkable plateau and central tree obstacle; visually inspected |
-| `public/diancie-base/AnimData.xml` | Variable frame dimensions/durations, animation aliases, attack rush/hit/return frame indices |
-| `public/overworld/eevee/` | Existing Walk, Idle, Sleep, Attack, Hurt and additional PMD action sheets |
-| `src/pokemon/PmdSprite.tsx`, `scripts/import-castform.py` | Metadata-driven playback, alpha bounds and motion preferences; not a complete battle/offset importer |
-| `src/pokemon/pmd-ui.css`, `src/Credits.tsx`, `ASSETS.md`, `NOTICE.md` | Navy dialogue panels, Pixelify Sans, attribution sources and fan-project wording |
+| Transform Forest ([Pamtre Berry mirror](https://pamtre-berry.neocities.org/articles/friendareas), ripper Toastypk) | Native 480 × 312 coordinates, a narrow clearing and a central stone exclusion; paths rather than unconstrained wandering |
+| Thunder Meadow (same mirror) | 456 × 335 map, walkable plateau and central tree obstacle; visually inspected |
+| PMD SpriteCollab `AnimData.xml` | Variable frame dimensions/durations, animation aliases, attack rush/hit/return frame indices |
 
-Preserve native artwork and coordinate systems, but do not copy the page-wide DOM resident system into a canvas world. Existing availability is not proof of redistribution permission. The new project has not copied any runtime artwork yet.
+Preserve native artwork and coordinate systems. Public availability is not proof of redistribution permission.

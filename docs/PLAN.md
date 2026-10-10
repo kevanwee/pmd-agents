@@ -75,7 +75,7 @@ The extension opens as a dockable VS Code webview, usable in the bottom panel or
  │                                               Pokémon C           │
  ├───────────────────────────────────────────────────────────────────┤
  │ portrait  Codex · Ceruledge        Editing · connected              │
- │           Voracity · current turn      [Focus session] [Details]    │
+ │           my-project · current turn    [Focus session] [Details]    │
  └───────────────────────────────────────────────────────────────────┘
 ```
 
@@ -86,7 +86,7 @@ This is a layout schematic, not a claim that a game map contains those props.
 - Keyboard roster navigation provides every essential action independently of the canvas. Status changes use a throttled live region. Colour is accompanied by text and icons.
 - Attention roster sorts approvals and questions first. Clicking a bubble navigates to the provider's own approval UI; it never grants approval.
 - Character picker shows species, forms, shiny variants, portraits and available animation capabilities. Start with a verified small roster, then expand through asset packs. Preserve assignments across panel hides, resize, provider events and reconnects.
-- Ship an initial roster candidate list: Eevee, Riolu, Pikachu, Treecko, Fuecoco, Charcadet, Ceruledge and Diancie. Exact inclusion depends on animation and attribution audit; availability in Voracity does not imply complete sets.
+- Ship an initial roster candidate list: Eevee, Riolu, Pikachu, Treecko, Fuecoco, Charcadet, Ceruledge and Diancie. Exact inclusion depends on animation and attribution audit; availability elsewhere does not imply complete sets.
 - Empty state shows an empty guild and “No sessions connected,” with connection setup. Any demonstration actors live behind a conspicuous Demo switch and never mix with real sessions.
 - At narrow widths, the map crops/pans, the roster becomes a drawer, and the details card stacks. Do not shrink every Pokémon into unreadable pixels to fit the whole map.
 - Quiet mode and reduced motion retain statuses and still frames while disabling roaming, attack loops, flashes and camera easing. Sound starts off. No soundtrack in the initial release.
@@ -180,7 +180,7 @@ The webview receives a complete revisioned snapshot on startup, then ordered del
 
 ### Sprite ingestion
 
-Import a pinned, reviewed set of PMD SpriteCollab files and their credit records. Reuse the lessons from Voracity's importers rather than copying assumptions from its small portrait renderer.
+Import a pinned, reviewed set of PMD SpriteCollab files and their credit records. Read native animation metadata rather than assuming fixed frame sizes.
 
 The importer must handle per-animation frame width/height, frame durations, direction rows, `CopyOf` aliases, attack timing markers, and available offset/shadow sheets. Resolve aliases with cycle detection. Confirm the source timing convention and row order against known animations; do not blindly treat a duration as milliseconds.
 
@@ -194,7 +194,7 @@ Start with a small complete roster. Lazy-load selected species and the active ma
 
 An image alone is not a usable world. A map manifest contains native dimensions, ground image/layers, foreground occlusion, walkable polygons or grid, obstacles, entrances/exits, activity anchors, facing at anchors, capacity and camera bounds.
 
-Voracity provides two concrete references:
+Two Red/Blue Rescue Team friend areas serve as the first scenes:
 
 - **Transform Forest (480 × 312):** attractive resting/gathering scene, but the central stone and narrow clearing constrain capacity. Preserve its stone exclusion and original coordinate system.
 - **Thunder Meadow (456 × 335):** open training-study candidate with a large central tree and cliff edges. Preserve the tree obstacle; evaluate capacity before selecting it as the default.
@@ -255,13 +255,13 @@ Estimate only after Phase 0. Integration uncertainty, window attribution and art
 7. Forged/malformed events, wrong tokens, untrusted workspace requests and unsafe asset paths are rejected. Fixtures and exports contain no private prompts or credentials.
 8. All sprite directions and actions render without clipping/jitter; attacks face targets and hit effects align with metadata. Routes never cross trees, walls or cliffs.
 9. 320px/480px-wide side panels and a wide editor view keep controls reachable. Keyboard, zoom, reduced motion and hidden-panel behaviour work.
-10. A release package has complete notices, no unresolved bundled assets, no unrelated Voracity material and no debug data.
+10. A release package has complete notices, no unresolved bundled assets, no unrelated material and no debug data.
 
 Use reducer/adapter unit tests for correctness; replay fixtures for end-to-end state; VS Code integration tests for terminals and window lifecycle; browser tests and actual screenshots for rendering. A browser mock does not prove native chat integration. Maintain a dated manual client/version matrix with pass/fail/limited evidence.
 
 ## 10. Recommended first implementation brief
 
-> Implement Phase 0 in this separate project. Read the plan and preserve the archived repository and Voracity. Build the smallest observer that can report real events from the installed Codex chat, Claude Code chat and current-window terminals without exposing chat content. Test window binding rather than guessing from cwd. In a separate replay view, import one complete PMD Pokémon and one existing local map with collision metadata and provenance, and demonstrate Idle, Walk, Attack and attention. Deliver a support matrix, screenshots, sanitized fixtures and a precise gap list. Do not implement the full editor, dungeon game, task orchestration or public distribution yet.
+> Implement Phase 0 in this separate project. Read the plan and preserve the archived repository. Build the smallest observer that can report real events from the installed Codex chat, Claude Code chat and current-window terminals without exposing chat content. Test window binding rather than guessing from cwd. In a separate replay view, import one complete PMD Pokémon and one existing local map with collision metadata and provenance, and demonstrate Idle, Walk, Attack and attention. Deliver a support matrix, screenshots, sanitized fixtures and a precise gap list. Do not implement the full editor, dungeon game, task orchestration or public distribution yet.
 
 The request that produced this document authorizes archive and planning. This brief makes the next implementation step concrete; it is not a record that Phase 0 has already run.
 

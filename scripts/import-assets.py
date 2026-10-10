@@ -9,7 +9,6 @@ RAW = f"https://raw.githubusercontent.com/PMDCollab/SpriteCollab/{REV}/"
 ROOT = Path(__file__).resolve().parent.parent
 parser = argparse.ArgumentParser()
 parser.add_argument("--output", default=str(ROOT / "assets/local"))
-parser.add_argument("--voracity", default=str(ROOT.parent / "voracity"))
 args = parser.parse_args()
 out = Path(args.output).resolve()
 out.mkdir(parents=True, exist_ok=True)
@@ -82,21 +81,31 @@ for item in roster+[{"name":"Substitute","number":"0000/0001","element":"normal"
     except Exception as error:
         raise RuntimeError(f"Portrait provenance unavailable for {species}") from error
     manifest["sprites"].append(entry)
-source=Path(args.voracity)
-mapfile=source/"public/pmd/thunder-meadow.png"
-if not mapfile.exists(): raise SystemExit("Supply --voracity with the existing local Voracity checkout")
-save("maps/thunder-meadow.png",mapfile.read_bytes(),"Voracity public/pmd/thunder-meadow.png; Mystery Dungeon Wiki, original game artwork")
-manifest["maps"].append({"id":"meadow","name":"Thunder Meadow","subtitle":"Guild training ground","file":"maps/thunder-meadow.png","width":456,"height":335,"credit":"Pokémon Mystery Dungeon: Red / Blue Rescue Team · game artwork; local Voracity reference, Wiki attribution; ripper not verified"})
-forest=source/"public/eevee-base"
-forest_source=json.loads((forest/"sources.json").read_text(encoding="utf-8"))
-save("maps/transform-forest.png",(forest/"background.png").read_bytes(),forest_source["backgroundUrl"])
-save("maps/forest-stone.png",(forest/"stone-frames.png").read_bytes(),forest_source["rockFramesUrl"])
-records[-1]["changes"]="Existing Voracity crops of 32 original rock poses from JPEG mirror; not lossless source pixels."
-save("sources/transform-forest.json",(forest/"sources.json").read_bytes(),forest_source["originalListing"])
+# Scenery and font come from pinned public sources; each download is checked against its recorded hash.
+MIRROR="https://pamtre-berry.neocities.org/images/"
+FONT="https://raw.githubusercontent.com/eifetx/Pixelify-Sans/39df74aba80df8157546034b878e8be1eb565ced/"
+def fetch(url, target, sha=None):
+    existing = out / target
+    data = existing.read_bytes() if existing.exists() else urlopen(url, timeout=30).read()
+    if sha and hashlib.sha256(data).hexdigest()!=sha: raise SystemExit(f"Unexpected download for {target}: {url}")
+    return save(target, data, url)
+meadow=Image.open(io.BytesIO(fetch(MIRROR+"friend-areas/og/thundermeadow.png","sources/thundermeadow.png","838594892e5c7d468361e9bfb8d55852e8fa9f458daba7796b7766b5f2121f02"))).convert("RGBA").crop((0,0,456,335))
+buffer=io.BytesIO();meadow.save(buffer,"PNG")
+save("maps/thunder-meadow.png",buffer.getvalue(),MIRROR+"friend-areas/og/thundermeadow.png")
+records[-1]["changes"]="Cropped to 456x335 (bottom row removed)."
+manifest["maps"].append({"id":"meadow","name":"Thunder Meadow","subtitle":"Guild training ground","file":"maps/thunder-meadow.png","width":456,"height":335,"credit":"Pokémon Mystery Dungeon: Red / Blue Rescue Team · game artwork; Pamtre Berry mirror / Taliax; ripper not verified"})
+fetch(MIRROR+"friend-areas/og/evolutionforest.png","maps/transform-forest.png","bf1ca7eda66e1828ff04fa90ffbf89cd68874431a1d4e3b46591d3bd2017e5fb")
+rock=Image.open(io.BytesIO(fetch(MIRROR+"misc/transformforestrock.jpg","sources/transformforestrock.jpg","0996120296f8d620664bc792fe70b1616bbb4bdb18c4fe6c7596c3bd7bb22b29"))).convert("RGB")
+# The mirror sheet holds 32 poses in a 4x8 grid separated by 1px white lines.
+stone=Image.new("RGB",(54*32,39))
+for frame in range(32): stone.paste(rock.crop((1+55*(frame%4),1+40*(frame//4),55+55*(frame%4),40+40*(frame//4))),(54*frame,0))
+buffer=io.BytesIO();stone.save(buffer,"PNG")
+save("maps/forest-stone.png",buffer.getvalue(),MIRROR+"misc/transformforestrock.jpg")
+records[-1]["changes"]="Crops of 32 original rock poses from JPEG mirror, excluding the white grid; not lossless source pixels."
 manifest["maps"].append({"id":"forest","name":"Transform Forest","subtitle":"Animated evolution stone","file":"maps/transform-forest.png","width":480,"height":312,"credit":"Pokémon Mystery Dungeon: Red / Blue Rescue Team · ripper Toastypk · Pamtre Berry mirror / Taliax; original game artwork",
  "layers":[{"file":"maps/forest-stone.png","x":209,"y":177,"w":54,"h":39,"frames":32,"frameMs":120,"credit":"Toastypk · 32 rock poses from Pamtre Berry JPEG mirror; 120ms playback chosen for this project, original game timing unavailable."}]})
-save("PixelifySans.woff2",(source/"public/fonts/PixelifySans.woff2").read_bytes(),"Voracity / Pixelify Sans Project Authors")
-save("PixelifySans-OFL.txt",(source/"public/fonts/PixelifySans-OFL.txt").read_bytes(),"https://github.com/eifetx/Pixelify-Sans")
+fetch(FONT+"fonts/webfonts/PixelifySans-Regular.woff2","PixelifySans.woff2","bb28dc5142ee7882fa4e66f787f76a6d6abb697dc644a4ce2cf46182c642a152")
+fetch(FONT+"OFL.txt","PixelifySans-OFL.txt","b66ba46f511a851ab09998b5a5a9fdbb102545a3864cb993095e1745996873a7")
 get("LICENSE.md")
 manifest["files"]=records
 (out/"manifest.json.tmp").write_text(json.dumps(manifest,indent=2)+"\n",encoding="utf-8")
