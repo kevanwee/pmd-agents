@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import {mkdtemp,rm,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {gameAssets,parseTypes,validTypes,ensureFiles,allGameAssets,LAST_ICON} from '../src/gamedata';
-test('game assets name pinned PokeAPI files and skip icons the source does not have',()=>{
- assert.deepEqual(gameAssets(25).map(a=>[a.key,a.file]),[['icon:0025','game/icons/0025.png'],['front:0025','game/front/0025.png'],['shiny:0025','game/shiny/0025.png']]);
- assert.ok(gameAssets(25)[0].url.endsWith('/sprites/pokemon/versions/generation-viii/icons/25.png'));
- assert.deepEqual(gameAssets(LAST_ICON+1).map(a=>a.key),['front:0899','shiny:0899'],'Generation IX species have no Generation VIII icon');
+import {gameAssets,parseTypes,validTypes,ensureFiles,allGameAssets} from '../src/gamedata';
+test('every species has one pinned box icon in the same style, plus pinned PokeAPI fronts',()=>{
+ assert.deepEqual(gameAssets(25).map(a=>[a.key,a.file]),[['icon:0025','game/box-icons/0025.png'],['front:0025','game/front/0025.png'],['shiny:0025','game/shiny/0025.png']]);
+ assert.match(gameAssets(25)[0].url,/^https:\/\/raw\.githubusercontent\.com\/smogon\/sprites\/[0-9a-f]{40}\/src\/minisprites\/pokemon\/gen6\/spikachu\.png$/);
+ assert.ok(gameAssets(937)[0].url.endsWith('/sceruledge-vsmogon.png'),'Generation IX icons come from the same set');
+ assert.ok(gameAssets(122)[0].url.endsWith('/smr_mime.png'));
  assert.deepEqual(gameAssets(0),[]);assert.deepEqual(gameAssets(1026),[]);
- assert.equal(allGameAssets().length,1025*2+LAST_ICON);
+ assert.equal(allGameAssets().length,1025*3);
 });
 test('types come from the CSV trio, keyed by National Dex number in slot order',()=>{
  const pokemon='id,identifier,species_id,height,weight,base_experience,order,is_default\n1,bulbasaur,1,7,69,64,1,1\n6,charizard,6,17,905,267,7,1\n10034,charizard-mega-x,6,17,1105,285,8,0\n';

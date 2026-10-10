@@ -9,7 +9,6 @@ export interface PcHost {
  choose:(id:string,sessionId:string)=>void;recall:()=>{view?:string}|undefined;remember:(state:{view:string})=>void;
 }
 const SOURCE='https://github.com/PMDCollab/SpriteCollab/tree/';
-const LAST_ICON=898;
 const pad=(n:number)=>String(n).padStart(4,'0');
 const el=(tag:string,className='',text='')=>{const n=document.createElement(tag);if(className)n.className=className;if(text)n.textContent=text;return n;};
 const image=(src:string,alt:string,className:string)=>{const img=document.createElement('img');img.src=src;img.alt=alt;img.className=className;img.draggable=false;return img;};
@@ -32,7 +31,7 @@ export class PokemonPc {
   const close=el('button','pc-close','Close');close.setAttribute('aria-label','Close storage');close.onclick=()=>this.close();
   head.append(heading,form,this.viewButton,close);
   this.body=el('div','pc-body');
-  const foot=el('footer','pc-foot','Box icons, front sprites and types are fetched from PokeAPI\'s pinned repositories; PMD portraits and chosen sheets from PMD SpriteCollab\'s pinned revision. Everything lands in your local pack with receipts. Nothing is bundled or uploaded.');
+  const foot=el('footer','pc-foot','Box icons come from Smogon\'s sprite repository and front sprites and types from PokeAPI\'s, all pinned; PMD portraits and chosen sheets from PMD SpriteCollab\'s pinned revision. Everything lands in your local pack with receipts. Nothing is bundled or uploaded.');
   frame.append(head,this.body,foot);this.root.append(frame);parent.append(this.root);
   this.root.addEventListener('keydown',e=>this.key(e));
   this.root.addEventListener('click',e=>{if(e.target===this.root)this.close();});
@@ -114,7 +113,7 @@ export class PokemonPc {
  /** Ask the host for the game sprites of species whose state is unknown, at most one request per render. */
  private requestGame(dexes:number[]){
   const wanted=dexes.filter(dex=>!this.game.has('front:'+pad(dex)));
-  for(const dex of wanted){this.game.set('front:'+pad(dex),'pending');this.game.set('shiny:'+pad(dex),'pending');if(dex<=LAST_ICON)this.game.set('icon:'+pad(dex),'pending');}
+  for(const dex of wanted){this.game.set('front:'+pad(dex),'pending');this.game.set('shiny:'+pad(dex),'pending');this.game.set('icon:'+pad(dex),'pending');}
   if(wanted.length)this.host.send({type:'gameAssets',dexes:wanted.slice(0,40)});
  }
  private status(form:DexForm){const pack=this.host.pack();return pack?.sprites.some(s=>s.id===form.id)?'In roster':form.ready?'Ready':form.portrait?'Portrait only':'Not drawn yet';}
@@ -208,8 +207,8 @@ export class PokemonPc {
    for(const s of sessions){
     const sp=this.host.pack()?.sprites.find(x=>x.id===s.species);
     const b=document.createElement('button');b.className='gs-party-row';b.dataset.key='party:'+s.id;b.setAttribute('aria-pressed',String(this.host.session()?.id===s.id));
-    const icon=sp?.dex?this.asset('icon',sp.dex)||this.asset('front',sp.dex):undefined;
-    b.append(image(this.host.assetBase+(icon||sp?.portrait||''),'',icon?'gs-party-icon':'gs-party-icon gs-party-portrait'),el('span','gs-party-text',s.label+(sp?' · '+sp.name:'')));
+    const icon=sp?.dex?this.asset('icon',sp.dex):undefined,front=!icon&&sp?.dex?this.asset('front',sp.dex):undefined;
+    b.append(image(this.host.assetBase+(icon||front||sp?.portrait||''),'',icon?'gs-party-icon':front?'gs-party-icon gs-party-front':'gs-party-icon gs-party-portrait'),el('span','gs-party-text',s.label+(sp?' · '+sp.name:'')));
     b.onclick=()=>{this.host.select(s.id);this.menu='none';this.render();};summary.append(b);
     if(sp?.dex)this.requestGame([sp.dex]);
    }
