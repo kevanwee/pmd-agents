@@ -35,3 +35,8 @@ Game maps found on a wiki or rip archive are not automatically licensed for redi
 Keep source code, fan sprites, game rips, fonts and other dependencies distinct in notices. The new code's release licence is not selected by this planning task. Do not copy The Office's blanket MIT badge onto the new package.
 
 Acceptance: every bundled asset resolves to a provenance record; selected Pokémon expose their individual credits; release packaging rejects unresolved artwork; README and in-app Credits describe the same shipped material. Original/repacked/recoloured assets must be described accurately.
+
+
+## Expanded local pack, 0.2.0
+
+The catalog now includes Bulbasaur, Ivysaur, Venusaur, Charmander, Charmeleon, Charizard, Squirtle, Wartortle and Blastoise, alongside the original three. Substitute is imported from `sprite/0000/0001` at the same pinned revision; its records name CHUNSOFT and JFain. The original sheets are unchanged. Canvas projectile and impact particles are original code-generated visuals, not ripped move-effect sheets. Exact per-asset sources, contributor records and hashes remain in the local manifest; the in-guild Credits view includes the expanded roster and dummy. README lists all resolved contributor names and preserves the two upstream Discord-only identifiers.

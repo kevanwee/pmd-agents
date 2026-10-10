@@ -36,13 +36,18 @@ def artists(credits):
         result.append(match.split('\t')[0])
     return list(dict.fromkeys(result))
 manifest={"version":1,"revision":REV,"sprites":[],"maps":[],"credits":[]}
-for species,number in [("Eevee","0133"),("Riolu","0447"),("Ceruledge","0937")]:
+roster=json.loads((ROOT/"assets/roster.json").read_text(encoding="utf-8"))
+for item in roster+[{"name":"Substitute","number":"0000/0001","element":"normal"}]:
+    species,number=item["name"],item["number"]
+    is_dummy=species=="Substitute"
+    print(f"Importing {species}...",flush=True)
     root=f"sprite/{number}/"
     xml=ET.fromstring(get(root+"AnimData.xml"))
     nodes={n.findtext("Name"):n for n in xml.findall("./Anims/Anim")}
     credit=get(root+"credits.txt").decode()
-    entry={"id":species.lower(),"name":species,"source":f"https://sprites.pmdcollab.org/#/0{int(number)}","artists":artists(credit),"creditRecord":credit,"animations":{}}
-    for action in ["Idle","Walk","Attack","Sleep"]:
+    entry={"id":species.lower(),"name":species,"dex":int(number.split('/')[0]),"element":item["element"],"source":RAW+root,"artists":artists(credit),"creditRecord":credit,"animations":{}}
+    actions=["Idle","Hurt"] if is_dummy else ["Idle","Walk","Attack","Sleep"]+(["Shoot"] if "Shoot" in nodes else [])
+    for action in actions:
         key=action; visited=set()
         while nodes[key].findtext("CopyOf"):
             if key in visited: raise ValueError("Animation alias cycle")
@@ -53,17 +58,22 @@ for species,number in [("Eevee","0133"),("Riolu","0447"),("Ceruledge","0937")]:
         filename=f"{species.lower()}/{key}.png"
         image=Image.open(io.BytesIO(get(root+key+"-Anim.png",filename))).convert("RGBA")
         shadow=Image.open(io.BytesIO(get(root+key+"-Shadow.png"))).convert("RGBA")
-        get(root+key+"-Offsets.png")
-        if image.size!=shadow.size or image.width!=w*len(durations) or image.height//h not in [1,8] or image.height%h:
+        offsets=Image.open(io.BytesIO(get(root+key+"-Offsets.png"))).convert("RGBA")
+        if image.size!=shadow.size or image.size!=offsets.size or image.width!=w*len(durations) or image.height//h not in [1,8] or image.height%h:
             raise ValueError(f"Unexpected sheet geometry: {species} {action}")
-        anchors=[]
+        anchors=[];heads=[]
         for row in range(image.height//h):
-            anchors.append([])
+            anchors.append([]);heads.append([])
             for frame in range(len(durations)):
                 points=[(x,y) for y in range(h) for x in range(w) if shadow.getpixel((frame*w+x,row*h+y))==(255,255,255,255)]
                 if len(points)!=1: raise ValueError(f"Missing/ambiguous shadow anchor: {species} {action} {row} {frame}")
                 anchors[-1].append(points[0])
-        entry["animations"][action]={"file":filename,"w":w,"h":h,"rows":image.height//h,"durations":durations,"anchors":anchors,"hit":int(node.findtext("HitFrame","0"))}
+                head=[(x,y) for y in range(h) for x in range(w) if offsets.getpixel((frame*w+x,row*h+y))==(0,0,0,255)]
+                heads[-1].append(head[0] if len(head)==1 else points[0])
+        entry["animations"][action]={"file":filename,"w":w,"h":h,"rows":image.height//h,"durations":durations,"anchors":anchors,"heads":heads,"hit":int(node.findtext("HitFrame","0"))}
+    if is_dummy:
+        manifest["dummy"]=entry
+        continue
     try:
         portrait=f"{species.lower()}/portrait.png"
         get(f"portrait/{number}/Normal.png",portrait)
@@ -81,5 +91,6 @@ save("PixelifySans.woff2",(source/"public/fonts/PixelifySans.woff2").read_bytes(
 save("PixelifySans-OFL.txt",(source/"public/fonts/PixelifySans-OFL.txt").read_bytes(),"https://github.com/eifetx/Pixelify-Sans")
 get("LICENSE.md")
 manifest["files"]=records
-(out/"manifest.json").write_text(json.dumps(manifest,indent=2)+"\n",encoding="utf-8")
-print(f"Imported {len(manifest['sprites'])} Pokémon, one map, native timings/shadow anchors and {len(records)} source receipts into {out}")
+(out/"manifest.json.tmp").write_text(json.dumps(manifest,indent=2)+"\n",encoding="utf-8")
+(out/"manifest.json.tmp").replace(out/"manifest.json")
+print(f"Imported {len(manifest['sprites'])} Pokémon, a Substitute dummy, one map and {len(records)} source receipts into {out}")

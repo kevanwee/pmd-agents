@@ -1,0 +1,14 @@
+[
+  {"name":"Eevee","number":"0133","element":"normal"},
+  {"name":"Riolu","number":"0447","element":"fighting"},
+  {"name":"Ceruledge","number":"0937","element":"fire"},
+  {"name":"Bulbasaur","number":"0001","element":"grass"},
+  {"name":"Ivysaur","number":"0002","element":"grass"},
+  {"name":"Venusaur","number":"0003","element":"grass"},
+  {"name":"Charmander","number":"0004","element":"fire"},
+  {"name":"Charmeleon","number":"0005","element":"fire"},
+  {"name":"Charizard","number":"0006","element":"fire"},
+  {"name":"Squirtle","number":"0007","element":"water"},
+  {"name":"Wartortle","number":"0008","element":"water"},
+  {"name":"Blastoise","number":"0009","element":"water"}
+]

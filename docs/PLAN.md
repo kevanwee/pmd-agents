@@ -264,3 +264,8 @@ Use reducer/adapter unit tests for correctness; replay fixtures for end-to-end s
 > Implement Phase 0 in this separate project. Read the plan and preserve the archived repository and Voracity. Build the smallest observer that can report real events from the installed Codex chat, Claude Code chat and current-window terminals without exposing chat content. Test window binding rather than guessing from cwd. In a separate replay view, import one complete PMD Pokémon and one existing local map with collision metadata and provenance, and demonstrate Idle, Walk, Attack and attention. Deliver a support matrix, screenshots, sanitized fixtures and a precise gap list. Do not implement the full editor, dungeon game, task orchestration or public distribution yet.
 
 The request that produced this document authorizes archive and planning. This brief makes the next implementation step concrete; it is not a record that Phase 0 has already run.
+
+
+## 10 October 2026 expansion checkpoint
+
+The owner requested Substitute training and all Gen 1 starter evolution lines. Version 0.2.0 delivers this local visual increment with twelve selectable Pokémon, native attack/ranged cycles and attributed Substitute sheets. The hook setup correction replaces the untitled JSON preview with a guided in-guild installer. Bounded discovery now finds resumed older Codex logs. See IMPLEMENTATION.md for evidence; remaining native-provider and persistence gates above are still open. Further Pokédex imports use the catalog and the same geometry, timing and provenance validation.

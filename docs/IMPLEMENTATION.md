@@ -2,6 +2,20 @@
 
 The owner authorized building after the planning pass. This branch delivers a first usable slice, not the entire roadmap.
 
+## 0.2.0: Substitute training, Kanto roster and guided hook installation
+
+Delivered 10 October 2026. Working, editing and shell-running states now train against the authentic Substitute sprite (`sprite/0000/0001`). Reading patrols and returns to its reserved station before attacking. Native Attack/Shoot timing alternates, with head-offset projectile origins, original element-coloured particles and Substitute Hurt frames. Attention, stale observation, Quiet, reduced motion and hidden panels stop training. Cycles are cosmetic, not tool counts, damage or completion signals. Older packs retain a procedural dummy fallback.
+
+The local import now includes all nine Bulbasaur/Charmander/Squirtle line stages plus Eevee, Riolu and Ceruledge. `assets/roster.json` drives staged expansion. The importer preserves original PNGs, sprite/portrait credits, native timing, head/shadow offsets and 238 source receipts. The manifest is replaced only after a complete import. Runtime validation covers the optional Shoot and dummy sheets; existing default character assignments stay stable when the roster grows. Credits identify every imported contributor, including two unresolved upstream Discord credit IDs.
+
+Connections now offers Connect Codex / Connect Claude, an in-panel settings destination and observer-only preview, and an explicit Install hooks button. It no longer opens an unexplained untitled JSON editor. The installer preserves other settings, writes an exact backup before changing configuration, refuses stale previews and repairs a missing observer helper on repeat installation. Codex trust stays with the user. Tests use temporary provider directories, never global provider configuration.
+
+Historical Codex discovery rotates 16 older date directories per scan (up to 366 directories within the newest eight year directories), while checking the last three UTC dates each time. Previously watched logs stay watched outside the current batch; only recently modified, workspace-matching, supported records qualify. Connections reports scan progress. This improves resumed old threads without inferring window membership.
+
+Validation: 36 focused tests, typecheck, production bundles, browser checks for generic-working impacts/projectiles, all nine starter selections, attention stops, hook installation controls, 320px layout, and the existing real VS Code terminal/webview integration. Four refreshed, labelled demo screenshots document the result. Live Claude native-chat, approval/subagent coverage and durable attachment restoration remain outstanding.
+
+The private GitHub repository is `kevanwee/pmd-agents`. Actions run 37970945659 could not start its job because of account billing/spending restrictions; local checks ran successfully. Billing was not changed.
+
 ## 0.1.2: stable teammates and an activity journal
 
 `src/placement.ts` reserves a position per visible session while the guild view is open. Removing, linking or reordering another session no longer teleports surviving actors. Freed slots can be reused; later clearings remain reachable even when earlier ones empty. Attention sorts the roster independently of map placement. This is presentation state, not persisted window membership, and resets when the view is recreated.
@@ -65,7 +79,7 @@ Source navigation opens a terminal or the provider's panel. Exact native-chat co
 
 `src/transcripts.ts` reads activity structure from local Codex/Claude JSONL files. Prompts, message text, tool arguments and outputs are discarded; paths are used locally for workspace filtering, and only the project basename is displayed. Nothing is uploaded. Disable `pmdAgents.observeLocalChats` to stop reading, then reload to clear retained session state.
 
-Discovery checks the last three UTC Codex date directories and each workspace's Claude project directory. It considers files modified within 12 hours, scans at most 64 recent candidates and tracks at most 16 matching sessions. Each initial read and polling read is capped at 1 MiB; partial history is labelled. Byte offsets remain stable across split UTF-8 reads; truncation resets parsing. Unsupported versions are skipped. Tested/inspected version families: Codex 0.153/0.159/0.162, Claude 2.1.289/2.1.292. These local formats are private and may change.
+Discovery checks the last three UTC Codex date directories, bounded batches of older folders (see 0.2.0 above), and each workspace's Claude project directory. It considers files modified within 12 hours, scans at most 64 recent candidates and tracks at most 16 matching sessions. Each initial read and polling read is capped at 1 MiB; partial history is labelled. Byte offsets remain stable across split UTF-8 reads; truncation resets parsing. Unsupported versions are skipped. Tested/inspected version families: Codex 0.153/0.159/0.162, Claude 2.1.289/2.1.292. These local formats are private and may change.
 
 Native sessions always start unbound; directory equality does not establish window ownership. Non-startup hooks take priority; fresh transcript recovery after hook silence is described above. A missing hook with no newer evidence produces stale status, not fabricated completion. Transcript-only observation does not prove approval waits, child identities or exact-chat focus. Remote hosts require logs in that extension host's filesystem.
 
@@ -79,12 +93,12 @@ Ignored `assets/local` contains the pack, source records, original credit files 
 
 Eevee and Riolu sprite records identify CHUNSOFT with Unspecified licence markers. Ceruledge identifies baronessfaron with historical terms. Portrait records also name Fearless-Quit and Top_Kec. The repository's general CC BY-NC notice is not a claim that every original game sprite is licensed fan art. Artwork is excluded from Git and the VSIX.
 
-The tree is conservatively blocked; no foreground mask is fabricated. Training dummies are original procedural props. Six positions appear per clearing page; all sessions remain in the roster. Full pathfinding, map editing, NPC sparring and dungeon expeditions are not implemented.
+The tree is conservatively blocked; no foreground mask is fabricated. Training dummies use imported Substitute Idle/Hurt sheets; older packs fall back to an original procedural prop. Move particles are original decorative effects. Six positions appear per clearing page; all sessions remain in the roster. Full pathfinding, map editing, NPC sparring and dungeon expeditions are not implemented.
 
 ## Validation
 
 - TypeScript typecheck and production bundles.
-- Thirty-two focused tests cover state ordering, attention, redaction, source recovery, window membership/linking, bounded journal history, stable placement, native transcript parsing, asset integrity and local transport.
+- Thirty-six focused tests cover state ordering, attention, redaction, source recovery, window membership/linking, bounded journal history, stable placement, native transcript parsing, asset integrity and local transport.
 - Playwright: demo isolation, roster, credits, paused simulation and 320px layout; desktop and narrow screenshots visually inspected.
 - Real VS Code: terminal lifecycle, shell command, webview ready and unbound hook candidate.
 - Actual CLI startup probes described above.

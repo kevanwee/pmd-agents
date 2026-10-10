@@ -14,14 +14,17 @@ export async function loadPack(directory:string):Promise<Pack> {
   return readFile(path);
  }
  const ids=new Set<string>();
- for(const s of p.sprites) {
-  if(!/^[a-z0-9-]{1,30}$/.test(s.id)||ids.has(s.id)||typeof s.name!=='string'||s.name.length>60||!Array.isArray(s.artists)||!Array.isArray(s.portraitCredits))throw Error('Invalid species');
+ for(const s of [...p.sprites,...(p.dummy?[p.dummy]:[])]) {
+  if(!/^[a-z0-9-]{1,30}$/.test(s.id)||ids.has(s.id)||typeof s.name!=='string'||s.name.length>60||!Array.isArray(s.artists)||(s!==p.dummy&&!Array.isArray(s.portraitCredits)))throw Error('Invalid species');
   ids.add(s.id);
-  await file(s.portrait);
-  for(const action of ['Idle','Walk','Attack','Sleep']) {
+  if(s!==p.dummy)await file(s.portrait);
+  const required=s===p.dummy?['Idle','Hurt']:['Idle','Walk','Attack','Sleep'];
+  for(const action of [...required,...(s.animations?.Shoot?['Shoot']:[])]) {
    const a:Animation=s.animations?.[action];
    if(!a||![a.w,a.h].every(x=>Number.isInteger(x)&&x>0&&x<=256)||![1,8].includes(a.rows)||!Array.isArray(a.durations)||!a.durations.length||a.durations.length>128||!a.durations.every(d=>Number.isInteger(d)&&d>0&&d<=600))throw Error('Invalid animation');
    if(!Array.isArray(a.anchors)||a.anchors.length!==a.rows||!a.anchors.every(row=>Array.isArray(row)&&row.length===a.durations.length&&row.every(v=>Array.isArray(v)&&v.length===2&&v.every(Number.isFinite)&&v[0]>=0&&v[0]<a.w&&v[1]>=0&&v[1]<a.h)))throw Error('Invalid anchors');
+   if(!Number.isInteger(a.hit)||a.hit<0||a.hit>=a.durations.length)throw Error('Invalid hit frame');
+   if(a.heads&&(!Array.isArray(a.heads)||a.heads.length!==a.rows||!a.heads.every(row=>Array.isArray(row)&&row.length===a.durations.length&&row.every(v=>Array.isArray(v)&&v.length===2&&v.every(Number.isFinite)&&v[0]>=0&&v[0]<a.w&&v[1]>=0&&v[1]<a.h))))throw Error('Invalid head offsets');
    const b=await file(a.file);
    if(b.length<24||b.toString('hex',0,8)!=='89504e470d0a1a0a'||b.readUInt32BE(16)!==a.w*a.durations.length||b.readUInt32BE(20)!==a.h*a.rows)throw Error('Sheet geometry mismatch');
   }

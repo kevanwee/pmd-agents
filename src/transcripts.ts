@@ -4,6 +4,7 @@ import {join,resolve,relative,isAbsolute,basename} from 'node:path';
 import {createHash} from 'node:crypto';
 import {normalize} from './provider';
 import type {Event,Provider} from './core';
+import {CodexDirectoryScan} from './discovery';
 export interface Evidence {source:'transcript'|'hook'|'terminal';version?:string;client?:string;project?:string;partial?:boolean;connection?:'observing'|'unavailable'|'paused'}
 export interface Metadata {provider:Provider;id:string;cwd:string;version:string;client:string}
 const hash=(s:string)=>createHash('sha256').update(s).digest('hex').slice(0,32);
@@ -94,6 +95,7 @@ async function head(file:string){
 }
 export interface WatchOptions {
  codexHome?:string;claudeHome?:string;poll?:boolean;
+ historyBatch?:number;
  onState?:(id:string,state:Evidence['connection'])=>void;
  onScan?:()=>void;
 }
@@ -102,21 +104,27 @@ export function startTranscriptWatcher(roots:string[],onEvent:(event:Event,evide
  const states=new Map<string,Evidence['connection']>();
  const state=(id:string,value:Evidence['connection'])=>{if(!disposed&&states.get(id)!==value){states.set(id,value);options.onState?.(id,value);}};
  let disposed=false,busy=false,lastScan=0;
- const diagnostics={files:0,unsupported:0,readErrors:0,lastScan:0};
+ const directoryScan=new CodexDirectoryScan();
+ const diagnostics={files:0,unsupported:0,readErrors:0,lastScan:0,historyFolders:0,historyChecked:0,historyPasses:0,historyCapped:false};
  const codexHome=options.codexHome||process.env.CODEX_HOME||join(homedir(),'.codex');
  const claudeHome=options.claudeHome||process.env.CLAUDE_CONFIG_DIR||join(homedir(),'.claude');
  async function scan(){
   if(!roots.length)return;
   const dirs:{provider:Provider;dir:string}[]=[];
-  for(let day=0;day<3;day++){
-   const date=new Date(Date.now()-day*86400000);
-   dirs.push({provider:'codex',dir:join(codexHome,'sessions',String(date.getUTCFullYear()),String(date.getUTCMonth()+1).padStart(2,'0'),String(date.getUTCDate()).padStart(2,'0'))});
-  }
+  for(const dir of await directoryScan.next(codexHome,Date.now(),options.historyBatch))dirs.push({provider:'codex',dir});
+  Object.assign(diagnostics,directoryScan.diagnostics);
   for(const root of roots)dirs.push({provider:'claude',dir:join(claudeHome,'projects',root.replace(/[^a-zA-Z0-9-]/g,'-'))});
   const files:{provider:Provider;file:string;mtime:number;size:number}[]=[];
+  const listed=new Set<string>();
+  // A tracked file stays eligible even when its creation-date folder is outside
+  // this historical batch. Its mtime still determines the recent-activity limit.
+  for(const [file,entry] of tails)try{
+   const info=await stat(file);
+   if(Date.now()-info.mtimeMs<43200000){files.push({provider:entry.id.startsWith('codex:')?'codex':'claude',file,mtime:info.mtimeMs,size:info.size});listed.add(file);}
+  }catch{/* Missing files become unavailable below. */}
   for(const d of dirs)try{
    const names=(await readdir(d.dir,{withFileTypes:true})).filter(f=>f.isFile()&&f.name.endsWith('.jsonl')).slice(-200);
-   for(const n of names){const file=join(d.dir,n.name);const s=await stat(file);if(Date.now()-s.mtimeMs<43200000)files.push({provider:d.provider,file,mtime:s.mtimeMs,size:s.size});}
+   for(const n of names){const file=join(d.dir,n.name);if(listed.has(file))continue;const s=await stat(file);if(Date.now()-s.mtimeMs<43200000){files.push({provider:d.provider,file,mtime:s.mtimeMs,size:s.size});listed.add(file);}}
   }catch{/* No logs for this date/project is normal. */}
   const selected=new Set<string>();diagnostics.unsupported=0;
   for(const f of files.sort((a,b)=>b.mtime-a.mtime).slice(0,64)){

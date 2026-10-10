@@ -16,5 +16,11 @@ try{
  await page.screenshot({path:'docs/screenshots/activity.png',fullPage:true});
  await page.getByRole('button',{name:'Credits',exact:true}).click();
  await page.screenshot({path:'docs/screenshots/credits.png',fullPage:true});
- console.log('Captured three labelled demo screenshots without real session data.');
+ await page.setViewportSize({width:1440,height:960});await page.getByRole('button',{name:'Team',exact:true}).click();
+ for(const [from,to] of [['Eevee','charizard'],['Riolu','blastoise'],['Ceruledge','venusaur']]){
+  await page.locator('.team-row').filter({hasText:from}).click();await page.getByRole('combobox',{name:'Pokémon for selected session'}).selectOption(to);
+ }
+ await page.locator('.team-row').filter({hasText:'Charizard'}).click();
+ await page.waitForTimeout(1400);await page.screenshot({path:'docs/screenshots/kanto.png'});
+ console.log('Captured four labelled demo screenshots without real session data.');
 }finally{await browser.close();preview.close();}

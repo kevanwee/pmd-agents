@@ -1,11 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,writeFile,appendFile,rm} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,appendFile,rm,utimes} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {TranscriptParser,JsonlTail,metadata,inWorkspace,startTranscriptWatcher} from '../src/transcripts';
 import {GuildStore} from '../src/core';
+import {CodexDirectoryScan} from '../src/discovery';
 const meta={provider:'codex' as const,id:'private-session',cwd:process.cwd(),version:'0.162.0-alpha.2',client:'VS Code'};
+test('resumed old Codex logs are discovered in bounded batches and remain watched',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'pmd-history-')),events:any[]=[];
+ const watcher=startTranscriptWatcher([root],e=>events.push(e),{codexHome:root,claudeHome:join(root,'claude'),poll:false,historyBatch:1});
+ try{
+  const make=async(day:string,id:string,old=false)=>{const dir=join(root,'sessions','2020','01',day);await mkdir(dir,{recursive:true});const file=join(dir,'session.jsonl');await writeFile(file,[{type:'session_meta',payload:{id,cwd:root,cli_version:meta.version,source:'vscode'}},{timestamp:new Date().toISOString(),type:'event_msg',payload:{type:'task_started',turn_id:id}}].map(r=>JSON.stringify(r)).join('\n')+'\n');if(old)await utimes(file,new Date(0),new Date(0));return file;};
+  const file=await make('03','resumed');await make('02','stale',true);await make('01','other');
+  const scan=new CodexDirectoryScan();const batch=await scan.next(root,Date.now(),1);assert.equal(batch.length,4);assert.equal(scan.diagnostics.historyFolders,3);
+  await watcher.rescan();assert.equal(events.length,1);assert.equal(watcher.diagnostics.files,1);
+  await appendFile(file,JSON.stringify({timestamp:new Date().toISOString(),type:'event_msg',payload:{type:'task_complete',turn_id:'resumed'}})+'\n');
+  await watcher.rescan();assert.equal(events.at(-1).kind,'finish');assert.equal(watcher.diagnostics.files,1);
+  await watcher.rescan();assert.equal(watcher.diagnostics.files,2);assert.equal(events.length,3);
+ }finally{watcher.dispose();await rm(root,{recursive:true,force:true});}
+});
 test('Codex transcript reconstructs turns without retaining raw content',()=>{
  const parser=new TranscriptParser(meta),store=new GuildStore();let i=0;
  const records=[

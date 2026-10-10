@@ -1,9 +1,10 @@
 import type {Evidence} from '../transcripts';
 import {GuildStore,status,type Agent,type Event} from '../core';
 import {ActivityJournal,journalText,type JournalEntry} from '../journal';
+import {trainingAt} from '../training';
 import {Placement} from '../placement';
 import {frameAt,slots,clearPath,facing,type Pack,type Species,type Point} from '../world';
-declare global {interface Window {PMD_BOOT:{pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;unsupported:number;readErrors:number;lastScan:number};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
+declare global {interface Window {PMD_BOOT:{pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;unsupported:number;readErrors:number;lastScan:number;historyFolders?:number;historyChecked?:number;historyCapped?:boolean};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
 const host=window.acquireVsCodeApi?.();
 const boot=window.PMD_BOOT;
 const pack=boot.pack;
@@ -14,6 +15,8 @@ let links=boot.links||{},diagnostics=boot.diagnostics,observationEnabled=boot.ob
 const displayStatus=(a:Agent)=>a.ended?status(a):!demo&&evidence[a.id]?.connection==='paused'?'Observation paused':!demo&&evidence[a.id]?.connection==='unavailable'?'Observation unavailable':status(a);
 const sourceLabel=(a:Agent)=>{const e=evidence[a.id];return e?.source==='transcript'?'Local transcript · '+(e.client||'client')+' '+(e.version||'')+(e.partial?' · partial history':''):e?.source==='hook'?'Observer hook':'Shell integration';};
 let selected='',demo=false,quiet=host?.getState()?.quiet??false,visible=true,area=0;
+let hookSetup:{id:string;provider:string;remove?:boolean;file:string;preview:string;installing?:boolean}|undefined;
+let hookResult:{provider?:string;remove?:boolean;error?:string}|undefined,reviewOpen=false;
 let tab:'team'|'activity'|'connections'|'credits'='team';
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<header><div class="brand"><span class="guild-mark" aria-hidden="true">✦</span><div><span class="eyebrow">EXPLORATION GUILD</span><h1>PMD Agents</h1></div></div><div class="header-actions"><span id="mode" class="mode">Current window</span><button id="quiet" aria-pressed="false" title="Pause world animations">Quiet</button><button id="demo">Try demo</button></div></header>
@@ -36,7 +39,7 @@ const img=(file:string)=>{
 };
 const button=(text:string,action:()=>void,className='')=>{const b=document.createElement('button');b.textContent=text;b.className=className;b.dataset.focusKey=className+':'+text;b.onclick=action;return b;};
 const node=(tag:string,text:string,className='')=>{const el=document.createElement(tag);el.textContent=text;el.className=className;return el;};
-const species=(a:Agent):Species|undefined=>pack?.sprites.find(s=>s.id===assignments[a.id])||pack?.sprites[[...a.id].reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,0)%pack.sprites.length];
+const species=(a:Agent):Species|undefined=>pack?.sprites.find(s=>s.id===assignments[a.id])||pack?.sprites[[...a.id].reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,0)%Math.min(3,pack.sprites.length)];
 const label=(a:Agent)=>a.provider==='terminal'?(terminalNames[a.id]||'Terminal'):a.provider==='codex'?'Codex':'Claude Code';
 const shown=()=>{const linked=new Set(demo?[]:Object.entries(links).filter(([id])=>agents.some(a=>a.id===id&&a.attached&&!a.ended)).map(([,terminal])=>terminal));return agents.filter(a=>a.attached&&!a.ended&&!linked.has(a.id));};
 const inClearing=()=>{const pages=placement.pages(),page=pages.includes(area)?area:pages[0]??0;return shown().filter(a=>placement.page(a.id)===page);};
@@ -112,7 +115,7 @@ function render() {
   else{
    sidebar.append(node('h3',label(a)+' · '+(species(a)?.name||'Session')),node('p',displayStatus(a),'activity-status'));
    const frozen=quiet||reduced.matches||a.attention!=='none'||['Status unconfirmed','Observation unavailable','Observation paused'].includes(displayStatus(a));
-   const motion=a.ended?'Left the clearing':frozen?'Movement paused':a.activity==='editing'?'Practising attacks':a.activity==='idle'?'Resting':'Patrolling the clearing';
+   const motion=a.ended?'Left the clearing':frozen?'Movement paused':['working','editing','running'].includes(a.activity)?'Training with Substitute':a.activity==='idle'?'Resting':'Patrolling the clearing';
    sidebar.append(node('p',motion+' · '+Object.keys(a.tools).length+' active tools','muted'));
    if(a.parent)sidebar.append(node('p','Child of '+a.parent.slice(-6),'muted'));
    sidebar.append(node('p',demo?'Simulated activity for this demo.':'Observed events only. Chat text and commands are not retained.','muted'));
@@ -130,12 +133,22 @@ function render() {
  }else if(tab==='connections'){
   sidebar.append(node('div','PROVIDER CONNECTIONS','section-label'));
   sidebar.append(node('h3','Keep your own chats'),node('p','Recent local Codex and Claude chat activity appears here automatically for supported client versions. Attach a session to bring it into your guild.','muted'));
-  sidebar.append(button('Set up observer hooks',()=>send({type:'setup'}),'primary'));
+  for(const provider of ['codex','claude'])sidebar.append(button('Connect '+(provider==='codex'?'Codex':'Claude'),()=>send({type:'setup',provider}),'primary'));
+  if(hookSetup){
+   const card=node('section','','candidate hook-setup');card.setAttribute('aria-label','Hook installation');
+   card.append(node('h3',(hookSetup.remove?'Remove':'Install')+' '+hookSetup.provider+' observer'),node('p','Settings file: '+hookSetup.file,'hook-path'),node('p','PMD Agents writes the settings for you. Existing settings are preserved and backed up when changed. No copying or saving JSON is needed.','muted'));
+   const review=document.createElement('details');review.open=reviewOpen;review.ontoggle=()=>{reviewOpen=review.open;};review.append(node('summary','Review observer entries'),node('pre',hookSetup.preview));card.append(review);
+   const plan=hookSetup;
+   const install=button(plan.installing?'Installing…':plan.remove?'Remove hooks':'Install hooks',()=>{send({type:'installHooks',id:plan.id});plan.installing=true;render();},'primary');install.disabled=!!plan.installing;card.append(install);
+   if(!hookSetup.installing)card.append(button('Cancel',()=>{send({type:'cancelHooks'});hookSetup=undefined;render();}));sidebar.append(card);
+  }
+  if(hookResult){const receipt=node('div','','candidate');receipt.setAttribute('role','status');receipt.append(node('h3',hookResult.error?'Setup needs attention':hookResult.remove?'Observer removed':'Observer installed'),node('p',hookResult.error||(hookResult.remove?'Other provider settings were preserved.':hookResult.provider==='codex'?'Trust the new observer in Codex’s hooks controls, then start a new turn. PMD Agents cannot grant that trust for you.':'Start a new Claude Code session to load the observer.')));sidebar.append(receipt);}
   sidebar.append(node('p','Hooks provide stronger lifecycle and approval signals. Codex hooks must be trusted in Codex. PMD Agents never answers approval prompts.','muted'));
   for(const c of boot.clients||[])sidebar.append(node('p',(c.id==='openai.chatgpt'?'Codex':'Claude Code')+' · '+c.version,'client-version'));
   if(!demo){
    sidebar.append(node('h3','Local observation'));
    sidebar.append(node('p',observationEnabled===false?'Local chat observation is disabled in settings.':diagnostics?diagnostics.files+' chat files watched · '+diagnostics.unsupported+' unsupported · '+diagnostics.readErrors+' read errors':'Waiting for local discovery.','muted'));
+   if(diagnostics?.historyFolders)sidebar.append(node('p','Older Codex folders checked: '+diagnostics.historyChecked+' / '+diagnostics.historyFolders+(diagnostics.historyCapped?' · history scan capped':''),'client-version'));
    if(diagnostics?.lastScan)sidebar.append(node('p','Last scan '+new Date(diagnostics.lastScan).toLocaleTimeString(),'client-version'));
    const scan=button('Scan for chats',()=>send({type:'rescan'}));scan.disabled=observationEnabled===false;sidebar.append(scan);
    sidebar.append(node('h3','Manage guild'));
@@ -161,9 +174,9 @@ function render() {
   sidebar.append(node('p','Unaffiliated with Nintendo, Creatures Inc., GAME FREAK, The Pokémon Company or Spike Chunsoft. Pokémon and game artwork belong to their respective owners.','muted'));
   sidebar.append(node('p','Inspired by Pixel Agents — Pablo De Lucca and contributors. Built by Kevan Wee, drawing on Voracity.','muted'));
   const link=document.createElement('a');link.href='https://github.com/pixel-agents-hq/pixel-agents';link.textContent='Pixel Agents';sidebar.append(link);
-  for(const s of pack?.sprites||[])sidebar.append(node('h3',s.name),node('p',[...s.artists,...s.portraitCredits].join(' · '),'credit-text'));
+  for(const s of [...(pack?.sprites||[]),...(pack?.dummy?[pack.dummy]:[])])sidebar.append(node('h3',s.name),node('p',[...s.artists,...(s.portraitCredits||[])].join(' · '),'credit-text'));
   sidebar.append(node('p','SpriteCollab: individual asset terms are preserved in the local pack. Original game sprites are not automatically covered by the fan-art licence.','muted'));
-  sidebar.append(node('p',pack?.maps[0].credit||'No local artwork loaded.','muted'),node('p','Pixelify Sans Project Authors · SIL OFL. Training dummy: original procedural prop.','muted'));
+  sidebar.append(node('p',pack?.maps[0].credit||'No local artwork loaded.','muted'),node('p','Pixelify Sans Project Authors · SIL OFL. Substitute: SpriteCollab source credits above. Move particles: original decorative effects.','muted'));
  }
  const live=team.filter(a=>a.attention!=='none').length;
  app.querySelector('#live-status')!.textContent=live?live+' session'+(live===1?'':'s')+' need attention':'';
@@ -171,7 +184,9 @@ function render() {
  if(focusKey)app.querySelector<HTMLElement>('[data-focus-key="'+CSS.escape(focusKey)+'"]')?.focus({preventScroll:true});
  draw(0);
 }
-function dummy(p:Point,hit:boolean) {
+function dummy(p:Point,hit:boolean,elapsed:number) {
+ if(pack?.dummy){const anim=pack.dummy.animations[hit?'Hurt':'Idle'],row=anim.rows===1?0:6,f=frameAt(anim,elapsed),sheet=img(anim.file),anchor=anim.anchors[row][f];if(sheet)ctx.drawImage(sheet,f*anim.w,row*anim.h,anim.w,anim.h,Math.round(p.x-anchor[0]),Math.round(p.y-anchor[1]),anim.w,anim.h);return;}
+
  ctx.fillStyle='#403121';ctx.fillRect(p.x-1,p.y-21,3,22);ctx.fillRect(p.x-10,p.y-16,20,3);
  ctx.fillStyle=hit?'#fff0a8':'#c6a562';ctx.fillRect(p.x-6,p.y-28,13,12);
  ctx.fillStyle='#7a512e';ctx.fillRect(p.x-3,p.y-25,7,6);ctx.fillStyle='#e5cf88';ctx.fillRect(p.x-1,p.y-23,3,2);
@@ -199,12 +214,14 @@ function draw(delta:number){
   const sp=species(a);if(!sp)continue;
   actor.elapsed+=still?0:delta;
   const uncertain=['Status unconfirmed','Observation unavailable','Observation paused'].includes(displayStatus(a)),attention=a.attention!=='none'||uncertain;
-  const canMove=!still&&!attention&&['working','reading','running'].includes(a.activity);
+  const training=['working','editing','running'].includes(a.activity);
+  const canMove=!still&&!attention&&(a.activity==='reading'||training&&Math.hypot(actor.p.x-slots[actor.slot%slots.length].x,actor.p.y-slots[actor.slot%slots.length].y)>1);
   const home=slots[actor.slot%slots.length];
+  if(training)actor.target={...home};
   if(canMove){
    if(Math.hypot(actor.p.x-actor.target.x,actor.p.y-actor.target.y)<1){
     actor.rest+=delta;
-    if(actor.rest>650){
+    if(actor.rest>650&&!training){
      const phase=Math.floor(actor.elapsed/2400)%2;
      const target={x:home.x+(phase?14:-14),y:home.y+(phase?-6:6)};
      actor.target=clearPath(actor.p,target)?target:{...home};actor.rest=0;
@@ -217,25 +234,37 @@ function draw(delta:number){
    }
   }else{actor.target={...actor.p};actor.direction=attention?0:2;}
  }
+ const trainingFrames:unknown[]=[];
  for(const a of [...list].sort((a,b)=>actors.get(a.id)!.p.y-actors.get(b.id)!.p.y)){
   const actor=actors.get(a.id)!,sp=species(a);if(!sp)continue;
   const uncertain=['Status unconfirmed','Observation unavailable','Observation paused'].includes(displayStatus(a)),attention=a.attention!=='none'||uncertain;
-  const editing=a.activity==='editing'&&!attention;
-  const attack=sp.animations.Attack,cycle=actor.elapsed%1800;
-  const attacking=editing&&!still&&cycle<attack.durations.reduce((x,y)=>x+y,0)*1000/60;
-  let action=attacking?'Attack':!still&&!attention&&['working','reading','running'].includes(a.activity)?'Walk':a.activity==='idle'&&!attention&&now-a.lastSeen>30000?'Sleep':'Idle';
-  const anim=sp.animations[action],f=still?0:frameAt(anim,attacking?cycle:actor.elapsed),row=anim.rows===1?0:actor.direction;
-  const sheet=img(anim.file);
-  if(editing)dummy({x:actor.p.x+23,y:actor.p.y},attacking&&f===attack.hit);
+  const training=['working','editing','running'].includes(a.activity);
+  const home=slots[actor.slot%slots.length],atHome=Math.hypot(actor.p.x-home.x,actor.p.y-home.y)<=1;
+  const motion=trainingAt(sp,actor.elapsed),active=training&&!attention&&!still&&atHome;
+  const attacking=active&&motion.attacking;
+  const walking=!still&&!attention&&(a.activity==='reading'||training&&!atHome);
+  const action=attacking?motion.action:walking?'Walk':a.activity==='idle'&&!attention&&now-a.lastSeen>30000?'Sleep':'Idle';
+  if(active)actor.direction=2;
+  const anim=sp.animations[action],f=still||attention?0:frameAt(anim,attacking?motion.cycle:actor.elapsed),row=anim.rows===1?0:actor.direction;
+  const sheet=img(anim.file),target={x:home.x+29,y:home.y};
+  if(training)dummy(target,active&&motion.hit,active?motion.hit?motion.hurtTime:actor.elapsed:0);
+  trainingFrames.push({id:a.id,action,frame:f,hit:active&&motion.hit,projectile:active?motion.projectile:undefined});
   const x=Math.round(actor.p.x),y=Math.round(actor.p.y);
   if(a.id===selected){ctx.strokeStyle='#fff2a8';ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(x,y+1,12,4,0,0,Math.PI*2);ctx.stroke();}
   ctx.fillStyle='#17252355';ctx.beginPath();ctx.ellipse(x,y,7,2,0,0,Math.PI*2);ctx.fill();
   if(sheet){const anchor=anim.anchors[row][f];ctx.drawImage(sheet,f*anim.w,row*anim.h,anim.w,anim.h,x-anchor[0],y-anchor[1],anim.w,anim.h);}
+  if(active&&(motion.hit||motion.projectile!==undefined)){
+   const colors:Record<string,string[]>={fire:['#ff9843','#fff1a5'],water:['#70d5ff','#e2faff'],grass:['#7ec950','#ddf899'],fighting:['#ffd287','#fff7d1'],normal:['#ebc8ff','#fff0ff']};
+   const color=colors[sp.element||'normal']||colors.normal;
+   if(motion.projectile!==undefined){const anchor=anim.anchors[row][f],head=anim.heads?.[row]?.[f]||anchor;const from={x:x-anchor[0]+head[0],y:y-anchor[1]+head[1]},t=motion.projectile;const px=Math.round(from.x+(target.x-from.x)*t),py=Math.round(from.y+(target.y-12-from.y)*t);ctx.fillStyle=color[0];ctx.fillRect(px-3,py-3,7,5);ctx.fillStyle=color[1];ctx.fillRect(px,py-2,3,3);}
+   if(motion.hit){const spread=5+Math.floor(motion.hurtTime/35);ctx.fillStyle=color[0];for(let n=0;n<6;n++){const angle=n*Math.PI/3;ctx.fillRect(Math.round(target.x+Math.cos(angle)*spread),Math.round(target.y-12+Math.sin(angle)*spread),2,3);}ctx.fillStyle=color[1];ctx.fillRect(target.x-2,target.y-14,4,4);}
+  }
   if(attention){
    ctx.fillStyle='#f7e8b6';ctx.fillRect(x-6,y-38,13,14);ctx.fillRect(x-2,y-24,4,3);
    ctx.fillStyle='#432e24';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(uncertain?'…':a.attention==='input'?'?':'!',x+1,y-27);
   }
  }
+ canvas.dataset.training=JSON.stringify(trainingFrames);
  canvas.dataset.drawCount=String(drawCount);
  canvas.dataset.simulationTime=String([...actors.values()].reduce((sum,a)=>sum+a.elapsed,0));
  canvas.dataset.actors=String(list.length);
@@ -270,6 +299,8 @@ app.querySelector('#demo')!.addEventListener('click',()=>{
 });
 window.addEventListener('message',event=>{
  const m=event.data;
+ if(m.type==='hookSetup'){hookSetup=m;hookResult=undefined;tab='connections';render();}
+ if(m.type==='hookResult'){hookSetup=undefined;hookResult=m;tab='connections';render();}
  if(m.type==='snapshot'){journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
  if(m.type==='visibility'){visible=m.visible;restart();}
 });

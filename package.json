@@ -3,7 +3,7 @@
   "type": "module",
   "displayName": "PMD Agents",
   "description": "A local Pokemon Mystery Dungeon guild for your coding agents",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "publisher": "kevanwee",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
@@ -65,7 +65,7 @@
     "test:extension": "node tests/run-extension.mjs",
     "preview": "node scripts/preview.mjs",
     "import:assets": "python scripts/import-assets.py",
-    "package": "npm run build && vsce package --no-dependencies --allow-missing-repository -o artifacts/pmd-agents-0.1.2.vsix",
+    "package": "npm run build && vsce package --no-dependencies --allow-missing-repository -o artifacts/pmd-agents-0.2.0.vsix",
     "screenshots": "node scripts/screenshots.mjs"
   },
   "devDependencies": {

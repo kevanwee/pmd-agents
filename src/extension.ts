@@ -6,13 +6,22 @@ import {existsSync} from 'node:fs';
 import {type Event} from './core';
 import {Sessions} from './sessions';
 import {startReceiver} from './receiver';
-import {setup} from './setup';
+import {prepareSetup,installSetup,type HookPlan} from './setup';
 import {loadPack} from './assets';
 import type {Pack} from './world';
 import {startTranscriptWatcher,type Evidence} from './transcripts';
 export async function activate(context:vscode.ExtensionContext) {
  const sessions=new Sessions(),store=sessions.store;
  let panel:vscode.WebviewPanel|undefined;
+ let pendingSetup:{id:string;plan:HookPlan}|undefined;
+ async function beginSetup(remove=false,choice?:string){
+  const provider=choice||(await vscode.window.showQuickPick([{label:'Codex',value:'codex'},{label:'Claude Code',value:'claude'}],{title:remove?'Remove PMD observer hooks':'Connect an agent provider'}))?.value;
+  if(provider!=='codex'&&provider!=='claude')return;
+  try{
+   const plan=await prepareSetup(provider,remove),id=randomUUID();pendingSetup={id,plan};
+   void panel?.webview.postMessage({type:'hookSetup',id,provider,remove,file:plan.file,preview:plan.preview,changed:plan.changed});
+  }catch(error){void panel?.webview.postMessage({type:'hookResult',error:error instanceof Error?error.message:'Could not prepare setup.'});}
+ }
  const terminals=new Map<vscode.Terminal,string>();
  const executions=new Map<vscode.TerminalShellExecution,{tool:string;session:string}>();
  const terminalNames=new Map<string,string>();
@@ -83,12 +92,12 @@ export async function activate(context:vscode.ExtensionContext) {
    '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src '+webview.cspSource+'; font-src '+webview.cspSource+'; style-src '+webview.cspSource+' \'nonce-'+nonce+'\'; script-src \'nonce-'+nonce+'\';">'+
    '<link rel="stylesheet" href="'+uri('media','style.css')+'"><style nonce="'+nonce+'">@font-face{font-family:Pixelify;src:url("'+assetBase+'PixelifySans.woff2")}</style></head><body><div id="app"></div>'+
    '<script nonce="'+nonce+'">window.PMD_BOOT='+JSON.stringify(boot).replaceAll('<','\\u003c')+';</script><script nonce="'+nonce+'" src="'+uri('media','app.js')+'"></script></body></html>';
-  panel.onDidDispose(()=>{panel=undefined;});
+  panel.onDidDispose(()=>{panel=undefined;pendingSetup=undefined;});
   panel.onDidChangeViewState(e=>{void webview.postMessage({type:'visibility',visible:e.webviewPanel.visible});if(e.webviewPanel.visible)publish();});
   webview.onDidReceiveMessage(async msg=>{
    try {
     if(!msg||typeof msg!=='object')return;
-    if(msg.type==='ready'){ready=true;publish();}
+    if(msg.type==='ready'){ready=true;publish();if(pendingSetup){const {id,plan}=pendingSetup;void webview.postMessage({type:'hookSetup',id,provider:plan.provider,remove:plan.remove,file:plan.file,preview:plan.preview,changed:plan.changed});}}
     if(msg.type==='attach'&&typeof msg.id==='string'&&store.agents.has(msg.id)){
      sessions.attach(msg.id);
      publish();
@@ -108,7 +117,13 @@ export async function activate(context:vscode.ExtensionContext) {
       else void vscode.window.showInformationMessage('The source session is no longer available in this window.');
      }
     }
-    if(msg.type==='setup')await setup(context);
+    if(msg.type==='setup')await beginSetup(false,msg.provider);
+    if(msg.type==='installHooks'&&typeof msg.id==='string'&&pendingSetup?.id===msg.id){
+     const {id,plan}=pendingSetup!;pendingSetup=undefined;
+     try{const result=await installSetup(plan,context.extensionPath);void panel?.webview.postMessage({type:'hookResult',id,provider:plan.provider,remove:plan.remove,...result});}
+     catch(error){void panel?.webview.postMessage({type:'hookResult',id,error:error instanceof Error?error.message:'Hook setup failed.'});}
+    }
+    if(msg.type==='cancelHooks')pendingSetup=undefined;
     if(msg.type==='assets'){
      const pick=await vscode.window.showOpenDialog({canSelectFolders:true,canSelectFiles:false,canSelectMany:false,title:'Select PMD pack folder containing manifest.json'});
      if(pick?.[0]){await loadPack(pick[0].fsPath);await vscode.workspace.getConfiguration('pmdAgents').update('assetPath',pick[0].fsPath,vscode.ConfigurationTarget.Global);panel?.dispose();await open();}
@@ -117,7 +132,7 @@ export async function activate(context:vscode.ExtensionContext) {
   });
  }
  context.subscriptions.push(vscode.commands.registerCommand('pmdAgents.open',open),
-  vscode.commands.registerCommand('pmdAgents.setup',()=>setup(context)),
-  vscode.commands.registerCommand('pmdAgents.removeHooks',()=>setup(context,true)));
+  vscode.commands.registerCommand('pmdAgents.setup',async()=>{await open();await beginSetup();}),
+  vscode.commands.registerCommand('pmdAgents.removeHooks',async()=>{await open();await beginSetup(true);}));
  return {snapshot:()=>store.snapshot(),...(context.extensionMode===vscode.ExtensionMode.Test?{registration:receiver.registration,ready:()=>ready,sessions}: {})};
 }

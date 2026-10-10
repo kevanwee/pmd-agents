@@ -1,7 +1,7 @@
 export interface Point {x:number;y:number}
-export interface Animation {file:string;w:number;h:number;rows:number;durations:number[];anchors:number[][][];hit:number}
-export interface Species {id:string;name:string;portrait:string;artists:string[];portraitCredits:string[];animations:Record<string,Animation>}
-export interface Pack {version:number;sprites:Species[];maps:{id:string;name:string;subtitle:string;file:string;width:number;height:number;credit:string}[]}
+export interface Animation {file:string;w:number;h:number;rows:number;durations:number[];anchors:number[][][];heads?:number[][][];hit:number}
+export interface Species {id:string;name:string;portrait:string;artists:string[];portraitCredits:string[];element?:string;animations:Record<string,Animation>}
+export interface Pack {version:number;sprites:Species[];dummy?:Species;maps:{id:string;name:string;subtitle:string;file:string;width:number;height:number;credit:string}[]}
 export const polygon:Point[]=[[112,152],[340,152],[366,186],[384,222],[404,252],[336,262],[300,280],[160,280],[126,262],[52,252],[62,228],[84,190]].map(([x,y])=>({x,y}));
 export function walkable(p:Point) {
  let hit=false;
