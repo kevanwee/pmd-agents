@@ -25,7 +25,10 @@ export async function run(){
   assert.ok(api.snapshot().some((a:any)=>a.provider==='terminal'&&a.outcome==='finished'));
   const r=api.registration;
   const response=await fetch('http://127.0.0.1:'+r.port+'/event',{method:'POST',headers:{Authorization:'Bearer '+r.token},body:JSON.stringify({window:null,event:{v:1,id:'probe',session:'codex:probe',provider:'codex',kind:'session',at:Date.now()}})});
-  assert.equal(response.status,204);assert.equal(api.snapshot().find((a:any)=>a.id==='codex:probe').attached,false);
+  assert.equal(response.status,204);
+  // Auto-attach (default on) spawns an unbound hook session; its membership records how it joined.
+  const probeDeadline=Date.now()+3000;while(!api.snapshot().find((a:any)=>a.id==='codex:probe')?.attached&&Date.now()<probeDeadline)await new Promise(r=>setTimeout(r,100));
+  assert.equal(api.snapshot().find((a:any)=>a.id==='codex:probe').attached,true);assert.equal(api.sessions.membership.get('codex:probe'),'auto');
   assert.equal(api.sessions.journal.snapshot()['codex:probe'][0].kind,'session');
   assert.ok(Object.values(api.sessions.journal.snapshot()).some((entries:any)=>entries.some((e:any)=>e.kind==='finish'&&e.source==='terminal')));
   api.sessions.attach('codex:probe');
