@@ -10,7 +10,12 @@ page.setDefaultTimeout(15000);
 try {
 await page.addInitScript(()=>{window.sent=[];window.acquireVsCodeApi=()=>({postMessage:m=>window.sent.push(m),getState:()=>({}),setState:()=>{}});});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
-await page.goto(preview.url);await page.getByRole('button',{name:'Try demo'}).click();
+await page.goto(preview.url);
+await page.evaluate(()=>window.postMessage({type:'snapshot',workspaces:['Fresh workspace'],agents:[],autoState:'single',diagnostics:{files:0,outsideWorkspace:1,unsupported:0,readErrors:0,lastScan:Date.now()}},'*'));
+await page.locator('#empty').getByText(/Watching Fresh workspace.*other folders/).waitFor();
+await page.locator('#empty').getByRole('button',{name:'Add project folder'}).click();
+assert.equal((await page.evaluate(()=>window.sent)).at(-1).type,'addWorkspaceFolder');
+await page.getByRole('button',{name:'Try demo'}).click();
 await page.waitForFunction(()=>document.querySelector('canvas').dataset.actors==='3');
 await page.waitForTimeout(1500);
 assert.equal(await page.locator('.team-row').count(),3);

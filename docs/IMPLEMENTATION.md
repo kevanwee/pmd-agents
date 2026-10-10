@@ -152,3 +152,7 @@ Screenshots, probe state and logs stay in ignored `artifacts`. No paid service, 
 ## Next increment
 
 Exercise live native Claude chat and both clients after hook setup/trust, including approval/input and child agents. Establish durable window identity for attachment restoration and improve process reconciliation before expanding maps.
+
+## 0.4.3: workspace discovery diagnostics
+
+A live sanitized probe saw Codex generation/tool events for the chat project, while the sole guild lease watched a different sibling project. No folder was hardcoded; the empty guild hid the mismatch. Snapshots now include current workspace display names, bounded scans count recent supported files outside that scope without exposing their paths, and the empty state explains the actionable cause. Add project folder delegates to VS Code's folder picker. Regression coverage uses random temporary project roots, separate instances and a workspace switch; no cross-workspace events are attached. Known format/version gates remain unchanged.

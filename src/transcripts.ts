@@ -106,7 +106,7 @@ export function startTranscriptWatcher(roots:string[],onEvent:(event:Event,evide
  const state=(id:string,value:Evidence['connection'])=>{if(!disposed&&states.get(id)!==value){states.set(id,value);options.onState?.(id,value);}};
  let disposed=false,busy=false,lastScan=0;
  const directoryScan=new CodexDirectoryScan();
- const diagnostics={files:0,unsupported:0,readErrors:0,lastScan:0,historyFolders:0,historyChecked:0,historyPasses:0,historyCapped:false};
+ const diagnostics={files:0,outsideWorkspace:0,unsupported:0,readErrors:0,lastScan:0,historyFolders:0,historyChecked:0,historyPasses:0,historyCapped:false};
  const codexHome=options.codexHome||process.env.CODEX_HOME||join(homedir(),'.codex');
  const claudeHome=options.claudeHome||process.env.CLAUDE_CONFIG_DIR||join(homedir(),'.claude');
  async function scan(){
@@ -127,7 +127,7 @@ export function startTranscriptWatcher(roots:string[],onEvent:(event:Event,evide
    const names=(await readdir(d.dir,{withFileTypes:true})).filter(f=>f.isFile()&&f.name.endsWith('.jsonl')).slice(-200);
    for(const n of names){const file=join(d.dir,n.name);if(listed.has(file))continue;const s=await stat(file);if(Date.now()-s.mtimeMs<43200000){files.push({provider:d.provider,file,mtime:s.mtimeMs,size:s.size});listed.add(file);}}
   }catch{/* No logs for this date/project is normal. */}
-  const selected=new Set<string>();diagnostics.unsupported=0;
+  const selected=new Set<string>();diagnostics.unsupported=0;diagnostics.outsideWorkspace=0;
   for(const f of files.sort((a,b)=>b.mtime-a.mtime).slice(0,64)){
    if(disposed)return;
    if(selected.size>=16)break;
@@ -135,7 +135,7 @@ export function startTranscriptWatcher(roots:string[],onEvent:(event:Event,evide
    try{
     const m=(await head(f.file)).map(r=>metadata(f.provider,r)).find(Boolean);
     if(!m){diagnostics.unsupported++;continue;}
-    if(!inWorkspace(m.cwd,roots))continue;
+    if(!inWorkspace(m.cwd,roots)){diagnostics.outsideWorkspace++;continue;}
     if(disposed)return;
     selected.add(f.file);
     let parser=new TranscriptParser(m);

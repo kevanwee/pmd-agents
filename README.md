@@ -8,7 +8,7 @@ PMD Agents is a local VS Code extension inspired by [Pixel Agents](https://githu
 ![Development](https://img.shields.io/badge/status-local%20development-e5c77d)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.109%2B-007acc)
 
-> **Development build 0.4.2.** Terminal tracking and live Codex transcript observation are verified locally. Native Claude records have been replayed successfully; live Claude chat tracking still needs validation. This is an unofficial, non-commercial fan project.
+> **Development build 0.4.3.** Terminal tracking and live Codex transcript observation are verified locally. Native Claude records have been replayed successfully; live Claude chat tracking still needs validation. This is an unofficial, non-commercial fan project.
 
 ![PMD Agents showing Eevee training, Riolu scouting and Ceruledge waiting for approval in Transform Forest](docs/screenshots/guild.png)
 
@@ -70,7 +70,7 @@ npm run package
 
 In VS Code:
 
-1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.4.2.vsix`.
+1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.4.3.vsix`.
 2. Run **Developer: Reload Window**, then **PMD Agents: Open Guild**.
 3. Choose a local artwork pack under **Connections → Choose asset pack**.
 4. Every discovered session spawns a Pokémon as it appears. **Connections → Auto-attach** controls this (and **Workspace auto-connect** the narrower, verified-workspace mode). If another guild window shares the same folders, automatic attachment pauses and you choose the intended session manually.
@@ -200,7 +200,7 @@ The repository is public. Earlier private-repository Actions jobs were blocked b
 
 The local build has **61 passing focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
 
-See the [0.4.2 code review and PC portability plan](docs/REVIEW-2026-10-10.md) for findings, remaining reliability work and the proposed Kevanwee/Voracity integration.
+See the [0.4.3 code review and PC portability plan](docs/REVIEW-2026-10-10.md) for findings, remaining reliability work and the proposed Kevanwee/Voracity integration.
 
 ## Roadmap
 
@@ -229,3 +229,7 @@ Sprite/portrait records credit **CHUNSOFT, baronessfaron, Fearless-Quit, Top_Kec
 Original project code is currently **all rights reserved**; see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md). This repository does not grant redistribution rights to third-party artwork. Source sheets and game maps remain outside the repository and installable package.
 
 **PMD Agents is an unofficial, non-commercial Pokémon Mystery Dungeon fan project.** It is not affiliated with, endorsed by or sponsored by Nintendo, Creatures Inc., GAME FREAK, The Pokémon Company or Spike Chunsoft. Pokémon and Pokémon Mystery Dungeon names, characters and game artwork belong to their respective owners.
+
+### Workspace discovery
+
+The installed extension activates in each trusted VS Code window and reads that window's current workspace folders. It is not tied to the repository used to build it. Folder additions/removals restart observation automatically. The empty guild and Connections show the current folder names and distinguish activity in other projects, disabled observation and overlapping windows. Use **Add project folder** when a chat works outside the open workspace, or open its project in its own window. Unrelated windows remain separate; shared-folder ambiguity still pauses automatic attachment. New windows use the shared local asset pack. An installed update needs **Developer: Reload Window** before an already-running guild uses it.

@@ -6,7 +6,37 @@ import {join} from 'node:path';
 import {TranscriptParser,JsonlTail,metadata,inWorkspace,startTranscriptWatcher} from '../src/transcripts';
 import {GuildStore} from '../src/core';
 import {CodexDirectoryScan} from '../src/discovery';
+import {WorkspaceLease} from '../src/autoconnect';
+import {Sessions} from '../src/sessions';
 const meta={provider:'codex' as const,id:'private-session',cwd:process.cwd(),version:'0.162.0-alpha.2',client:'VS Code'};
+test('arbitrary projects and new instances discover automatically; changing folders replaces eligibility',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'pmd-any-project-')),a=join(dir,'random-a'),b=join(dir,'random-b');
+ const codexHome=join(dir,'codex'),claudeHome=join(dir,'claude'),logs=join(codexHome,'sessions','2026','10','10');
+ const leases=[new WorkspaceLease(join(dir,'leases')),new WorkspaceLease(join(dir,'leases'))];
+ const watchers:ReturnType<typeof startTranscriptWatcher>[]=[];
+ try{
+  await mkdir(logs,{recursive:true});
+  for(const [id,cwd] of [['a',a],['b',b]])await writeFile(join(logs,id+'.jsonl'),[
+   {type:'session_meta',payload:{id,cwd,cli_version:meta.version,source:'vscode'}},
+   {timestamp:new Date().toISOString(),type:'event_msg',payload:{type:'task_started',turn_id:id}}
+  ].map(r=>JSON.stringify(r)).join('\n')+'\n');
+  const sessions=new Sessions();
+  const discover=async(roots:string[],lease:WorkspaceLease,s:Sessions)=>{
+   await lease.refresh(roots);
+   const watcher=startTranscriptWatcher(roots,(event,evidence)=>s.receive(event,false,evidence),{codexHome,claudeHome,poll:false});watchers.push(watcher);
+   await watcher.rescan();s.autoConnect(lease.eligible);return watcher;
+  };
+  const first=await discover([a],leases[0],sessions);
+  assert.equal(sessions.store.snapshot().filter(s=>s.attached).length,1);
+  assert.equal(first.diagnostics.outsideWorkspace,1);
+  const other=new Sessions();await discover([b],leases[1],other);
+  assert.equal(other.store.snapshot().filter(s=>s.attached).length,1);
+  assert.notEqual(other.store.snapshot()[0].id,sessions.store.snapshot()[0].id);
+  first.dispose();sessions.pauseTranscripts();await leases[1].dispose();
+  await discover([b],leases[0],sessions);
+  assert.deepEqual(sessions.store.snapshot().filter(s=>s.attached).map(s=>s.id),other.store.snapshot().map(s=>s.id));
+ }finally{watchers.forEach(w=>w.dispose());await Promise.all(leases.map(l=>l.dispose()));await rm(dir,{recursive:true,force:true});}
+});
 test('resumed old Codex logs are discovered in bounded batches and remain watched',async()=>{
  const root=await mkdtemp(join(tmpdir(),'pmd-history-')),events:any[]=[];
  const watcher=startTranscriptWatcher([root],e=>events.push(e),{codexHome:root,claudeHome:join(root,'claude'),poll:false,historyBatch:1});

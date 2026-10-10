@@ -1,3 +1,4 @@
+import {connectionStatus} from '../connectionStatus';
 import type {Evidence} from '../transcripts';
 import {GuildStore,status,type Agent,type Event} from '../core';
 import {ActivityJournal,journalText,type JournalEntry} from '../journal';
@@ -6,7 +7,7 @@ import {Placement} from '../placement';
 import {Navigator,terrains,segment,canStand} from '../navigation';
 import {frameAt,facing,type Pack,type Species,type Point} from '../world';
 import {PokemonPc} from './pc';
-declare global {interface Window {PMD_BOOT:{scene?:string;autoConnect?:boolean;autoAttach?:boolean;autoState?:string;membership?:Record<string,string>;pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;unsupported:number;readErrors:number;lastScan:number;historyFolders?:number;historyChecked?:number;historyCapped?:boolean};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
+declare global {interface Window {PMD_BOOT:{workspaces?:string[];scene?:string;autoConnect?:boolean;autoAttach?:boolean;autoState?:string;membership?:Record<string,string>;pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;outsideWorkspace?:number;unsupported:number;readErrors:number;lastScan:number;historyFolders?:number;historyChecked?:number;historyCapped?:boolean};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
 const host=window.acquireVsCodeApi?.();
 const boot=window.PMD_BOOT;
 const pack=boot.pack;
@@ -15,6 +16,7 @@ const scene=()=>pack?.maps.find(m=>m.id===sceneId)||pack?.maps[0];
 const terrain=()=>terrains[scene()?.id||'meadow'];
 const navigation=new Map<string,Navigator>();
 const navigator=()=>{const id=scene()?.id||'meadow';if(!navigation.has(id))navigation.set(id,new Navigator(terrain()));return navigation.get(id)!;};
+let workspaces=boot.workspaces;
 let autoConnect=boot.autoConnect??true,autoAttach=boot.autoAttach??true,autoState=boot.autoState,membership=boot.membership||{};
 let worldTime=0,showPaths=false,zoom=1,pan={x:0,y:0},view={x:0,y:0,scale:1};
 
@@ -97,9 +99,9 @@ function render() {
  (app.querySelector('#area') as HTMLButtonElement).hidden=pages===1;
  empty.replaceChildren();empty.hidden=!!pack&&team.length>0&&!failedImages.size;
  if(!empty.hidden){empty.append(node('h3',failedImages.size?'An artwork file could not load':!pack?'Your guild is ready':'A quiet moment'));
-  empty.append(node('p',failedImages.size?'Choose the complete asset pack again.':!pack?boot.assetError||'Choose your local PMD asset pack.':'No sessions connected. Open a terminal or connect your agents.'));
+  empty.append(node('p',failedImages.size?'Choose the complete asset pack again.':!pack?boot.assetError||'Choose your local PMD asset pack.':connectionStatus({workspaces,autoConnect,autoAttach,autoState,observationEnabled,diagnostics})));
   if(!pack||failedImages.size)empty.append(button('Choose asset pack',()=>send({type:'assets'}),'primary'));
-  else empty.append(button('Connect agents',()=>{tab='connections';render();},'primary'));
+  else {empty.append(button('Connection details',()=>{tab='connections';render();},'primary'));if(!workspaces?.length||diagnostics?.outsideWorkspace)empty.append(button('Add project folder',()=>send({type:'addWorkspaceFolder'})));}
  }
  details.replaceChildren();
  const a=team.find(x=>x.id===selected)||(tab==='activity'?agents.find(x=>x.id===selected&&x.attached&&x.ended):undefined);
@@ -168,6 +170,8 @@ function render() {
   const spawn=button(autoAttach?'Auto-attach: on':'Auto-attach: off',()=>send({type:'autoAttach',enabled:!autoAttach}));spawn.setAttribute('aria-pressed',String(autoAttach));sidebar.append(spawn);
   sidebar.append(node('p',autoAttach?'Every discovered session spawns a Pokémon as it appears, whatever its source. This is a convenience, not proof of which window owns a chat; it pauses while another guild window shares these folders.':'Only window-bound terminals and hooks, workspace chats and sessions you attach join the guild.','muted'));
   const auto=button(autoConnect?'Workspace auto-connect: on':'Workspace auto-connect: off',()=>send({type:'autoConnect',enabled:!autoConnect}));auto.setAttribute('aria-pressed',String(autoConnect));sidebar.append(auto);
+  sidebar.append(node('p',workspaces?.length?'Workspace: '+workspaces.join(', '):'No workspace folder open','muted'));
+  sidebar.append(button('Add project folder',()=>send({type:'addWorkspaceFolder'})));
   sidebar.append(node('p',autoState==='ambiguous'?'Another guild window shares these folders. Automatic attachment is paused for overlapping folders; choose the intended sessions below.':autoState==='unavailable'?'Checking which guild windows share this workspace…':autoConnect?'Workspace chats reconnect automatically. This includes matching local chats, not verified native-window ownership. Removed sessions stay excluded.':'Automatic attachment is off. Window-bound terminals and hooks still connect automatically.','muted'));
   sidebar.append(node('p','Observer hooks are optional for local transcript observation. Install once for richer lifecycle signals.','muted'));
   for(const provider of ['codex','claude'])sidebar.append(button('Connect '+(provider==='codex'?'Codex':'Claude'),()=>send({type:'setup',provider}),'primary'));
@@ -185,6 +189,7 @@ function render() {
   if(!demo){
    sidebar.append(node('h3','Local observation'));
    sidebar.append(node('p',observationEnabled===false?'Local chat observation is disabled in settings.':diagnostics?diagnostics.files+' chat files watched · '+diagnostics.unsupported+' unsupported · '+diagnostics.readErrors+' read errors':'Waiting for local discovery.','muted'));
+   if(diagnostics?.outsideWorkspace)sidebar.append(node('p',diagnostics.outsideWorkspace+' recent chat files outside this workspace. Add their project folder to observe them here.','muted'));
    if(diagnostics?.historyFolders)sidebar.append(node('p','Older Codex folders checked: '+diagnostics.historyChecked+' / '+diagnostics.historyFolders+(diagnostics.historyCapped?' · history scan capped':''),'client-version'));
    if(diagnostics?.lastScan)sidebar.append(node('p','Last scan '+new Date(diagnostics.lastScan).toLocaleTimeString(),'client-version'));
    const scan=button('Scan for chats',()=>send({type:'rescan'}));scan.disabled=observationEnabled===false;sidebar.append(scan);
@@ -353,7 +358,7 @@ window.addEventListener('message',event=>{
  const m=event.data;
  if(m.type==='hookSetup'){hookSetup=m;hookResult=undefined;tab='connections';render();}
  if(m.type==='hookResult'){hookSetup=undefined;hookResult=m;tab='connections';render();}
- if(m.type==='snapshot'){autoConnect=m.autoConnect??autoConnect;autoAttach=m.autoAttach??autoAttach;autoState=m.autoState;membership=m.membership||{};journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
+ if(m.type==='snapshot'){workspaces=m.workspaces??workspaces;autoConnect=m.autoConnect??autoConnect;autoAttach=m.autoAttach??autoAttach;autoState=m.autoState;membership=m.membership||{};journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
  if(m.type==='visibility'){visible=m.visible;restart();}
  if(m.type==='dex')pc.setDex(m);
  if(m.type==='dexPortraits')pc.portraitsReady(m);

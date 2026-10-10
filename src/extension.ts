@@ -45,7 +45,7 @@ export async function activate(context:vscode.ExtensionContext) {
  const evidence=sessions.evidence;
  let watcher:ReturnType<typeof startTranscriptWatcher>|undefined;
  let publishTimer:ReturnType<typeof setTimeout>|undefined;
- const snapshot=()=>({type:'snapshot',autoConnect:autoEnabled(),autoAttach:autoAttachEnabled(),autoState:lease?.state,membership:Object.fromEntries(sessions.membership),scene:context.workspaceState.get<string>('scene','forest'),sequence:++sequence,agents:store.snapshot(),journal:sessions.journal.snapshot(),links:Object.fromEntries(sessions.links),diagnostics:watcher?.diagnostics,observationEnabled:!!watcher,evidence:Object.fromEntries(evidence),terminalNames:Object.fromEntries(terminalNames),assignments});
+ const snapshot=()=>({type:'snapshot',workspaces:(vscode.workspace.workspaceFolders||[]).map(f=>f.name),autoConnect:autoEnabled(),autoAttach:autoAttachEnabled(),autoState:lease?.state,membership:Object.fromEntries(sessions.membership),scene:context.workspaceState.get<string>('scene','forest'),sequence:++sequence,agents:store.snapshot(),journal:sessions.journal.snapshot(),links:Object.fromEntries(sessions.links),diagnostics:watcher?.diagnostics,observationEnabled:!!watcher,evidence:Object.fromEntries(evidence),terminalNames:Object.fromEntries(terminalNames),assignments});
  const publish=()=>{if(!publishTimer)publishTimer=setTimeout(()=>{publishTimer=undefined;if(panel)void panel.webview.postMessage(snapshot());},80);};
  const receive=(e:Event,direct:boolean,source:Evidence={source:e.provider==='terminal'?'terminal':'hook'})=>{
   sessions.receive(e,direct,source);reconcile();
@@ -140,6 +140,7 @@ export async function activate(context:vscode.ExtensionContext) {
     if(msg.type==='autoConnect'&&typeof msg.enabled==='boolean'){await vscode.workspace.getConfiguration('pmdAgents').update('autoConnect',msg.enabled,vscode.ConfigurationTarget.Workspace);reconcile();publish();}
     if(msg.type==='autoAttach'&&typeof msg.enabled==='boolean'){await vscode.workspace.getConfiguration('pmdAgents').update('autoAttach',msg.enabled,vscode.ConfigurationTarget.Workspace);reconcile();publish();}
     if(msg.type==='rescan')await watcher?.rescan();
+    if(msg.type==='addWorkspaceFolder')await vscode.commands.executeCommand('workbench.action.addRootFolder');
     if(msg.type==='character'&&typeof msg.id==='string'&&store.agents.has(msg.id)&&pack?.sprites.some(s=>s.id===msg.species)){
      assignments[msg.id]=msg.species;await context.workspaceState.update('characters',assignments);publish();
     }
