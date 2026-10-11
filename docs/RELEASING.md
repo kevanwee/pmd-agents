@@ -1,14 +1,17 @@
 # Release checklist
 
-No public VSIX release has been published. Version 0.5.1 is a local release
-candidate. The asset/branding distribution basis is unresolved; the checks below
-do not constitute legal clearance. Keep private IP review notes out of Git.
+Version 0.5.1 is the first public GitHub release. Use this checklist for later
+releases as well. Packaging checks do not constitute legal clearance. Keep
+private IP review notes out of Git.
 
 ## Before packaging
 
-- Resolve the intended distribution basis for code, screenshots, branding,
-  dependencies and the artwork importer. An excluded asset pack does not resolve
-  all of those questions. Record any permission privately and its scope.
+- Review the intended distribution basis for code, screenshots, branding,
+  dependencies and the artwork importer. Record any permission privately and
+  its scope, and disclose unresolved questions to the owner before publication.
+  An excluded asset pack does not resolve all of those questions. The owner
+  explicitly authorised publication of the fan version on 12 October 2026 after
+  the risk discussion; that instruction is not third-party permission.
 - Confirm the target platforms and live-provider claims against dated evidence.
   Do not describe live Claude, remote hosts or non-Windows support as verified.
 - Update `package.json`, `package-lock.json`, README and the release notes together.
@@ -50,7 +53,7 @@ Record skipped checks and unsupported clients rather than claiming they passed.
 
 ## Draft and publish
 
-Create a **draft** only after the distribution direction is resolved. A draft is
+Create a **draft** after the owner has selected the distribution direction. A draft is
 not an announcement or a completed release. Use the exact reviewed commit:
 
 ```powershell
@@ -59,7 +62,7 @@ gh release create v0.5.1 artifacts/pmd-agents-0.5.1.vsix artifacts/pmd-agents-0.
 ```
 
 Inspect the draft's commit, notes, files and checksums. When publication is
-authorized and the distribution questions are resolved, publish it in GitHub's
+authorised after any outstanding distribution questions are disclosed, publish it in GitHub's
 release editor. Then download the public files and compare their hashes with the
 tested files. Update README's release-status notice as part of that release.
 Keep the tag fixed; make a new patch release for corrections. Never replace an

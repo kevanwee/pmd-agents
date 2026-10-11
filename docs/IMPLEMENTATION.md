@@ -241,6 +241,6 @@ rights to download artwork, a fresh upstream artwork import, live Claude, or
 remote/non-Windows hosts. Existing 0.5.0 runtime/UI coverage remains applicable;
 the application runtime source is unchanged.
 
-The candidate and checksum remain local. The owner chose to keep the fan version
-and discuss remaining IP risks before publishing a GitHub release. Preparing or
-merging this increment is not public VSIX publication or artwork clearance.
+After the risk discussion, the owner explicitly authorised the GitHub release
+on 12 October 2026. Version 0.5.1 publishes the VSIX and checksum with installation
+instructions and support limits. Publication does not establish artwork clearance.
