@@ -291,6 +291,7 @@ The owner requested a complete GitHub release and selected a proprietary licence
 for original code. Version 0.5.1 prepares onboarding, packaging verification,
 checksums, a fresh-profile install test and a manual release checklist. The fan
 version is retained; public VSIX publication awaits the owner's requested risk
-discussion. No attribution, local import path or code licence is treated as
+discussion. The owner subsequently authorised creating the release on 12 October
+2026. No attribution, local import path or code licence is treated as
 permission for third-party artwork or branding. See IMPLEMENTATION.md for
 tested scope and RELEASING.md for the publication procedure.

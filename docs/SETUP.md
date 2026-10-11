@@ -1,7 +1,8 @@
 # Installation and troubleshooting
 
-The first public VSIX is still in preparation. Use the README's release-status
-notice to distinguish a published package from a local development build.
+Download the VSIX and matching checksum from
+[GitHub Releases](https://github.com/kevanwee/pmd-agents/releases).
+The README provides the current release's direct download links.
 
 ## Requirements
 
