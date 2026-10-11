@@ -1,4 +1,33 @@
+PMD Agents Proprietary Use Licence
 Copyright (c) 2026 Kevan Wee. All rights reserved.
 
-No licence to redistribute the original project source is granted at this stage.
-Third-party material retains its own terms; see NOTICE.md and asset manifests.
+1. Scope
+This licence applies only to original code and documentation owned by Kevan Wee
+in this project (the Software). Third-party artwork, characters, trademarks,
+fonts, data and dependencies are excluded and retain their own terms. No rights
+in Pokemon or Pokemon Mystery Dungeon intellectual property are granted.
+
+2. Permitted use
+You may download, install and run the Software without charge, including for
+your own work. You may inspect the source, compile it, modify it for your own
+use, and make copies reasonably necessary for those activities and backup.
+These permissions do not establish permission to obtain or use third-party
+assets. Preserve this licence and applicable third-party notices in your copies.
+
+3. Reserved rights
+Except as permitted above, you may not redistribute, sell, sublicense, publish
+or host copies of the Software or modified versions without written permission
+from Kevan Wee. Linking to the official repository or release is permitted.
+This restriction does not limit rights that cannot be excluded under applicable
+law, rights granted directly by a third-party licence, or GitHub users' rights
+to view and fork a public repository under GitHub's applicable Terms of Service.
+No trademark rights are granted. All rights not expressly granted are reserved.
+
+4. No warranty
+To the extent permitted by applicable law, the Software is provided as is,
+without warranties of any kind, including merchantability, fitness for a
+particular purpose and non-infringement. Kevan Wee is not liable for loss or
+damage arising from its use to the extent such liability may lawfully be
+excluded. Nothing here excludes a right or liability that cannot be excluded.
+
+This is a proprietary licence, not an open-source licence.

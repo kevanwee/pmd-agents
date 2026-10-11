@@ -32,7 +32,7 @@ Each file or inseparable asset group needs: stable asset ID; category; species/f
 
 Game maps found on a wiki or rip archive are not automatically licensed for redistribution. The first map study can reference the user's existing local files. A public package includes only assets with a documented basis; unresolved originals remain in an excluded local pack. If necessary, commission/create compatible original environment artwork or provide a local import route. A local import route is not a claim that all uses are legally permitted.
 
-Keep source code, fan sprites, game rips, fonts and other dependencies distinct in notices. The new code's release licence is not selected by this planning task. Do not copy The Office's blanket MIT badge onto the new package.
+Keep source code, fan sprites, game rips, fonts and other dependencies distinct in notices. The owner selected a proprietary installation/use licence for original code on 11 October 2026; see [LICENSE](../LICENSE). That licence grants no third-party artwork or trademark rights. Do not copy The Office's blanket MIT badge onto this package.
 
 Acceptance: every bundled asset resolves to a provenance record; selected Pokémon expose their individual credits; release packaging rejects unresolved artwork; README and in-app Credits describe the same shipped material. Original/repacked/recoloured assets must be described accurately.
 
