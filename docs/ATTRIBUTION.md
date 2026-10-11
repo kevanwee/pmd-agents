@@ -64,3 +64,14 @@ retains its owners' rights; these files are `local-reference-only`, excluded fro
 Git and the VSIX. The decompilation source's availability is not an artwork licence.
 The independent importer uses the documented binary layout and playback behavior.
 The previous Pamtre/JPEG scenery is no longer used by newly imported packs.
+
+
+## Windows companion dependency
+
+The Windows VSIX includes the Core/WinForms assemblies and x64 loader from
+[Microsoft.Web.WebView2 1.0.4258.31](https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.4258.31).
+The original Microsoft licence ships as `native/WebView2-LICENSE.txt`. The build
+verifies NuGet package SHA-256
+`56f7f4b8bf9aee4b8efefbbdd4f67d5f74ebd1b100ed0806da71bf76af481aa9`.
+The installed Evergreen Runtime is used separately. No third-party game artwork
+is included with this dependency or with the companion executable.

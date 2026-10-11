@@ -7,6 +7,7 @@ await Promise.all([
  build({entryPoints:['src/hook.ts'],bundle:true,platform:'node',format:'cjs',target:'node22',outfile:'dist/hook.cjs'}),
  build({entryPoints:['src/webview/app.ts'],bundle:true,platform:'browser',format:'iife',target:'es2022',outfile:'media/app.js'}),
  build({entryPoints:['tests/extension.ts'],bundle:true,platform:'node',format:'cjs',external:['vscode'],outfile:'dist/extension-test.cjs'}),
- copyFile('src/webview/style.css','media/style.css')
+ copyFile('src/webview/style.css','media/style.css'),
+ copyFile('src/webview/widget.html','media/widget.html')
 ]);
 console.log('Built extension, observer hook and guild view.');

@@ -30,3 +30,5 @@
 - 11 October 2026: Box sprites must look like one set at one scale, as in the games. Mixed sources (Generation VIII icons, resized front sprites, PMD sheets) made Generation IX Pokémon look oversized. Use one icon style for every species and draw sprites at natural size times an integer; never fit them to a box.
 
 - 11 October 2026: Reproduce original Friend Area animation (especially flowing magma) using sourced native frames and timings. Expand the available bases, review, push and merge when ready. Keep all game map data in the excluded local pack.
+
+- 11 October 2026: PMD Agents should live in a compact Explorer widget in each VS Code instance. Minimizing VS Code should reveal an always-on-top desktop companion; minimizing that companion dismisses it independently. Keep the full guild available and match the actual native owner without guessing from a project path. The owner authorized creating/reviewing/merging PRs and installing the update.

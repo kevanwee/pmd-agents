@@ -8,7 +8,7 @@ PMD Agents is a local VS Code extension inspired by [Pixel Agents](https://githu
 ![Development](https://img.shields.io/badge/status-local%20development-e5c77d)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.109%2B-007acc)
 
-> **Development build 0.4.4.** Terminal tracking and live Codex transcript observation are verified locally. Native Claude records have been replayed successfully; live Claude chat tracking still needs validation. This is an unofficial, non-commercial fan project.
+> **Development build 0.5.0.** Terminal tracking and live Codex transcript observation are verified locally. Native Claude records have been replayed successfully; live Claude chat tracking still needs validation. This is an unofficial, non-commercial fan project.
 
 ![PMD Agents showing Eevee training, Riolu scouting and Ceruledge waiting for approval in Transform Forest](docs/screenshots/guild.png)
 
@@ -16,6 +16,7 @@ PMD Agents is a local VS Code extension inspired by [Pixel Agents](https://githu
 
 ## What the guild does
 
+- **Lives in Explorer.** A compact guild opens in every trusted window using the installed VS Code profile. On local Windows x64, minimizing that window brings up its own always-on-top desktop widget.
 - **Observes your existing workflow.** Keep using native Codex and Claude Code chats and VS Code terminals. PMD Agents is an observer, not a replacement chat client.
 - **Uses authentic PMD animations.** Directional sheets, native frame durations, portraits and shadow anchors; no four-frame sprite assumptions.
 - **Reconnects automatically.** Supported recent workspace chats join without Scan or Add. Overlapping guild windows pause automatic attachment instead of silently claiming the same chat.
@@ -55,9 +56,37 @@ Move colours follow the species' primary type for every type, from the pack's ow
 
 ![Charizard training beside Substitute, Blastoise scouting and Venusaur waiting for attention; simulated demo](docs/screenshots/kanto.png)
 
+## Persistent widget
+
+The **PMD Agents** view lives in Explorer alongside your files. Drag its heading to
+place it below Outline, or resize it like other sidebar views. VS Code remembers
+your placement. **PMD Agents: Show Sidebar Widget** brings it back if hidden.
+**Open guild** opens the full team, activity journal and Pok?mon PC.
+
+On **local Windows x64**, the desktop companion starts automatically. Minimize
+VS Code and its guild appears above other apps; restore VS Code and it hides.
+Minimize or close the widget to dismiss it for that minimize cycle. Restore it
+from its tray icon, **Pop out**, or **PMD Agents: Show Desktop Widget**. You can
+also pop it out while VS Code is open. Each window owns a separate companion;
+closing that window closes its companion. Position and size are remembered per
+workspace, and Friend Area/Quiet changes synchronize with the full guild.
+
+Automatic window matching requires the PMD status-bar item to be visible once
+after startup. Keep the status bar visible until the item's tooltip says the
+widget follows this window; hiding it afterwards is fine. If it is hidden at
+startup (for example in Zen Mode), manual pop-out still works. The companion
+never guesses ownership from a folder or window title.
+
+Set **PMD Agents: Desktop Widget** off to use only Explorer. The native companion
+needs the Microsoft Edge WebView2 Runtime, normally already installed on Windows.
+Other operating systems and remote extension hosts retain the Explorer widget;
+the desktop companion is not supported there. Restricted/untrusted workspaces
+keep the extension disabled. New VS Code profiles need the extension installed
+in that profile too. Reload existing windows after installing an update.
+
 ## Run locally
 
-Requires **Node.js 22+**, npm and **VS Code 1.109+**. Importing artwork also requires Python 3 and Pillow. Windows local is the tested environment; remote hosts are not yet verified.
+Requires **Node.js 22+**, npm and **VS Code 1.109+**. Importing artwork also requires Python 3 and Pillow. Windows local is the tested environment; remote hosts are not yet verified. Packaging the desktop companion requires Windows x64, Python 3 and the .NET Framework compiler included with Windows; the build downloads a hash-pinned WebView2 SDK and includes its licence. Ordinary TypeScript builds remain cross-platform.
 
 ```powershell
 git clone https://github.com/kevanwee/pmd-agents.git
@@ -70,8 +99,8 @@ npm run package
 
 In VS Code:
 
-1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.4.4.vsix`.
-2. Run **Developer: Reload Window**, then **PMD Agents: Open Guild**.
+1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.5.0.vsix`.
+2. Run **Developer: Reload Window**, then look for **PMD Agents** in Explorer. **Open guild** opens its full controls.
 3. Choose a local artwork pack under **Connections → Choose asset pack**.
 4. Every discovered session spawns a Pokémon as it appears. **Connections → Auto-attach** controls this (and **Workspace auto-connect** the narrower, verified-workspace mode). If another guild window shares the same folders, automatic attachment pauses and you choose the intended session manually.
 

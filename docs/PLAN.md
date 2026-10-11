@@ -279,3 +279,8 @@ Version 0.3.0 implements map selection, animated Transform Forest scenery, expan
 ## 11 October 2026 scenery checkpoint
 
 0.4.5 expands to eleven Friend Areas with native palette frames and timings, validated navigation and a scenery-only local importer. See IMPLEMENTATION.md and RESEARCH.md. Provider observation remains unchanged.
+
+
+## 11 October 2026 widget checkpoint
+
+The owner requested a persistent Explorer widget in every VS Code instance, with an independently dismissible desktop companion when VS Code is minimized, and authorized PR creation, merge and installation. Version 0.5.0 implements this for local Windows x64 with a sidebar fallback elsewhere. See IMPLEMENTATION.md for actual scope and validation; provider-observation limits remain unchanged.

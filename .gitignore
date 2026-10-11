@@ -12,3 +12,5 @@ media/
 .vscode-test/
 
 __pycache__/
+
+/native/

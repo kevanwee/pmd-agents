@@ -6,3 +6,8 @@
 !dist/extension.cjs
 !dist/hook.cjs
 !media/**
+!native/PmdWidget.exe
+!native/Microsoft.Web.WebView2.Core.dll
+!native/Microsoft.Web.WebView2.WinForms.dll
+!native/WebView2Loader.dll
+!native/WebView2-LICENSE.txt

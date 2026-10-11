@@ -71,3 +71,13 @@ revision, `src/ground_bg.c` defines the BPC/BMA decoder and BPL palette player;
 Friend Areas have no BPA tile-animation slots. Nine use native BPL cycles;
 Mushroom Forest and Rainbow Peak do not. This replaces the earlier unverified
 scenery status and guessed 120 ms stone timing (native is six ticks / 100 ms).
+
+
+## Persistent widget research (11 October 2026)
+
+- [VS Code webview views](https://code.visualstudio.com/api/extension-guides/webview) support an Explorer-hosted `WebviewViewProvider`. VS Code ignores `initialSize` for views in containers owned by another extension; users resize/reorder the view normally.
+- [`WindowState`](https://code.visualstudio.com/api/references/vscode-api#WindowState) exposes focus/activity, not native minimization. Losing focus must not trigger pop-out.
+- [Win32 IsIconic](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-isiconic) reports native minimized state. Ownership is verified first by an activation-unique accessible status label and the executable path, then tracked with an HWND property/PID.
+- [WebView2 distribution](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution) distinguishes the SDK from the installed runtime. We reuse the installed Evergreen Runtime and include SDK redistributables, not a downloaded browser runtime.
+- [Virtual-host mappings](https://learn.microsoft.com/en-us/dotnet/api/microsoft.web.webview2.core.corewebview2.setvirtualhostnametofoldermapping) serve packaged UI/local assets without starting an HTTP server. Asset-origin CORS allows fonts; page CSP and request/navigation handlers restrict destinations.
+- Initial Windows integration demonstrated that foreground-only discovery misses background/new windows. Enumerating same-executable windows and requiring the exact random accessibility marker resolved real VS Code binding without focus stealing or title heuristics.

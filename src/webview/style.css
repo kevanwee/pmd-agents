@@ -61,3 +61,20 @@
 .gs-party-icon{width:auto;height:auto;image-rendering:pixelated}.gs-party-front{width:48px;height:48px}.gs-party-portrait{width:40px;height:40px}.gs-party-text{font-family:Pixelify,monospace;font-size:15px;color:#ede7c9}
 @media(max-width:1000px){.gs-slot{height:60px;padding-bottom:8px}.gs-icon{zoom:1}.gs-icon-front{width:40px;height:40px}}
 @media(max-width:700px){.gs{grid-template-columns:1fr;padding:12px;gap:12px}.gs-sprite{height:120px}.gs-front{width:96px;height:96px}.gs-slot{height:52px;padding-bottom:6px}.gs-icon{zoom:1}.gs-icon-front{width:40px;height:40px}.gs-popup{width:180px}}
+/* Compact Explorer and desktop surfaces share the live guild renderer. */
+body.compact{min-width:0;height:100vh;overflow:hidden;background:var(--vscode-sideBar-background,#132022)}
+.compact #app{height:100%;display:flex;flex-direction:column}
+.compact header,.compact aside,.compact .dialogue,.compact footer,.compact .scene-heading>div:first-child,.compact #zoom,.compact #paths{display:none}
+.compact main{display:flex;flex:1;min-height:0;padding:0;overflow:hidden}
+.compact .world-panel{display:flex;flex-direction:column;min-height:0;width:100%;border:0}
+.compact .scene-heading{padding:4px 6px;flex:none}
+.compact .scene-controls{max-width:none;width:100%;gap:0}
+.compact .scene-controls select{width:100%;min-width:0;font-size:11px;padding:4px 6px}
+.compact .canvas-wrap{flex:1;min-height:80px;margin:0 4px 4px;overflow:hidden;border-radius:3px}
+.compact canvas{width:100%;height:100%;display:block}
+.widget-toolbar{display:flex;align-items:center;gap:5px;padding:5px 6px 0;flex:none}
+.widget-toolbar button{padding:3px 7px;font-size:10px;min-height:24px}.widget-toolbar button:first-child{margin-right:auto}
+.compact .empty{padding:8px;max-width:240px;font-size:10px;top:45%}
+.compact .empty h3{font-size:14px;margin:0 0 4px}.compact .empty p{font-size:10px;line-height:1.3;margin:3px}
+.compact .empty button{font-size:10px;padding:3px 6px}.compact .empty .muted{display:none}
+.compact .world-tools{padding:4px}.compact .world-tools span,.compact .world-tools button{font-size:9px;padding:2px 5px}
