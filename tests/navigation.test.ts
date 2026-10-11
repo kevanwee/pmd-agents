@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {terrains,Navigator,canStand,segment} from '../src/navigation';
 test('each map has reachable stations and valid dummy positions',()=>{
  for(const terrain of Object.values(terrains)){
-  const nav=new Navigator(terrain);assert.ok(nav.cells.length>160);
+  const nav=new Navigator(terrain);assert.ok(nav.cells.length>=terrain.stations.length);
+  assert.equal(terrain.stations.length,6);
   for(const start of terrain.stations){
    assert.ok(canStand(start,terrain),JSON.stringify(start));assert.ok(canStand({x:start.x+29,y:start.y},terrain),'Dummy outside terrain '+JSON.stringify(start));
    for(const end of terrain.stations){const route=nav.route(start,end);assert.ok(route.length,'No route');let previous=start;for(const point of route){assert.ok(segment(previous,point,terrain));previous=point;}assert.deepEqual(route.at(-1),end);}

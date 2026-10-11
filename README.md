@@ -79,7 +79,7 @@ The extension can observe sessions without artwork; the scene needs a complete l
 
 ### Import artwork
 
-Source sheets and game maps are **not included in Git or the VSIX**. The importer downloads pinned SpriteCollab sheets, the Thunder Meadow and Transform Forest maps and stone animation from the Pamtre Berry mirror, and Pixelify Sans from its upstream repository. Each map and font download is checked against a recorded SHA-256 hash; nothing else is needed beyond Python and Pillow.
+Source sheets and game maps are **not included in Git or the VSIX**. The importer downloads pinned SpriteCollab sheets, eleven original Red Rescue Team Friend Areas from [pret/pmd-red](https://github.com/pret/pmd-red), and Pixelify Sans. Maps are decoded from native tile and palette data, including original palette frames and durations, with source hashes recorded in the local pack. Python and Pillow are required. To refresh only maps while preserving your imported Pokemon, run `npm run import:scenery -- --output C:/path/to/your/pack`.
 
 ```powershell
 python -m pip install Pillow
@@ -109,8 +109,11 @@ Use **Manage guild** to link a terminal-launched agent to its terminal. Native p
 
 Choose the **Friend area** dropdown above the scene:
 
-- **Transform Forest:** a 32-frame evolution-stone layer, sourced through Toastypk’s rip and the [Pamtre Berry mirror](https://pamtre-berry.neocities.org/articles/friendareas). The mirror frames have JPEG artefacts; playback is 120 ms per pose because original game timing was not supplied.
-- **Thunder Meadow:** a wider authored walkable area, a tighter tree obstacle and original ambient breeze effects. This does not claim to reproduce the original game’s weather animation.
+- **Transform Forest:** lossless 32-frame evolution stone, six native ticks (100 ms) per frame.
+- **Thunder Meadow, Mt. Moonview, Decrepit Lab, Seafloor Cave, Volcanic Pit, Legendary Island, Healing Forest and Waterfall Lake:** original palette animation, including magma flows, water, lights and shimmer.
+- **Mushroom Forest and Rainbow Peak:** original static scenery; these maps contain no palette or tile animation.
+
+All eleven maps have authored movement zones and six reachable training stations with safe dummy positions. Scenery updates independently of agent activity; Quiet and reduced motion freeze it.
 
 Pokémon now find routes around obstacles across the clearing, rather than moving 14 pixels either side of a station. Active workers alternate training and exploration; readers scout and recent idle teammates wander before resting. **Walkable area** shows the authored boundaries and routes. These are measured from the artwork, not extracted game collision maps. **Zoom in** supports dragging; **Fit map** restores the whole scene. Quiet and reduced motion stop environment animation as well as Pokémon motion.
 

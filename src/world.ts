@@ -3,7 +3,7 @@ export interface Point {x:number;y:number}
 export interface Animation {file:string;w:number;h:number;rows:number;durations:number[];anchors:number[][][];heads?:number[][][];hit:number}
 /** `form` and `dex` identify a SpriteCollab form; `shadow` is AnimData's ShadowSize (0 small, 1 medium, 2 large). */
 export interface Species {id:string;name:string;portrait:string;artists:string[];portraitCredits:string[];element?:string;dex?:number;form?:{path:string;label:string};shadow?:number;portraitFrom?:string;animations:Record<string,Animation>}
-export interface MapLayer {file:string;x:number;y:number;w:number;h:number;frames:number;frameMs:number;credit:string}
+export interface MapLayer {file:string;x:number;y:number;w:number;h:number;frames:number;frameMs?:number;durations?:number[];credit:string}
 export interface SceneMap {id:string;name:string;subtitle:string;file:string;width:number;height:number;credit:string;layers?:MapLayer[]}
 export interface Pack {version:number;sprites:Species[];dummy?:Species;maps:SceneMap[]}
 export const polygon=terrains.meadow.ground;
