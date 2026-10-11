@@ -203,6 +203,13 @@ const pixels=await maps.locator('canvas').evaluate(c=>c.toDataURL());
 await maps.waitForTimeout(380);assert.notEqual(await maps.locator('canvas').evaluate(c=>c.toDataURL()),pixels,'The stone layer must actually change pixels');
 await maps.getByRole('button',{name:'Quiet',exact:true}).click();const frozenMap=await maps.locator('canvas').getAttribute('data-environment');await maps.waitForTimeout(350);assert.equal(await maps.locator('canvas').getAttribute('data-environment'),frozenMap);
 await maps.getByRole('button',{name:'Resume motion',exact:true}).click();
+const nativeMaps=await maps.evaluate(()=>window.PMD_BOOT.pack.maps);assert.equal(nativeMaps.length,11);
+for(const map of nativeMaps){
+ await maps.getByRole('combobox',{name:'Friend area'}).selectOption(map.id);await maps.waitForTimeout(350);
+ assert.equal(JSON.parse(await maps.locator('canvas').getAttribute('data-environment')).length,(map.layers||[]).length);
+ if(map.layers?.length){const pixels=await maps.locator('canvas').evaluate(c=>c.toDataURL());await maps.waitForFunction(previous=>document.querySelector('canvas').toDataURL()!==previous,pixels,{timeout:8000,polling:120});}
+ if(['volcanicpit','waterfalllake'].includes(map.id))await maps.screenshot({path:'artifacts/'+map.id+'-native.png'});
+}
 await maps.getByRole('combobox',{name:'Friend area'}).selectOption('meadow');await maps.getByRole('combobox',{name:'Friend area'}).blur();
 await maps.getByRole('button',{name:'Try demo',exact:true}).click();
 const patrolStart=JSON.parse(await maps.locator('canvas').getAttribute('data-positions')).find(a=>a.id==='demo-claude');

@@ -38,7 +38,7 @@ export async function loadPack(directory:string):Promise<Pack> {
  const manifestPath=resolve(root,'manifest.json');
  if((await stat(manifestPath)).size>16_000_000)throw Error('Manifest too large');
  const p=JSON.parse(await readFile(manifestPath,'utf8')) as Pack;
- if(p.version!==1||!Array.isArray(p.sprites)||!p.sprites.length||p.sprites.length>1200||!Array.isArray(p.maps)||!p.maps.length||p.maps.length>2)throw Error('Unsupported asset pack');
+ if(p.version!==1||!Array.isArray(p.sprites)||!p.sprites.length||p.sprites.length>1200||!Array.isArray(p.maps)||!p.maps.length||p.maps.length>11)throw Error('Unsupported asset pack');
  const ids=new Set<string>();
  for(const s of [...p.sprites,...(p.dummy?[p.dummy]:[])]) {
   if(typeof s?.id!=='string'||ids.has(s.id))throw Error('Invalid species');ids.add(s.id);
@@ -47,12 +47,13 @@ export async function loadPack(directory:string):Promise<Pack> {
  const maps=new Set<string>();
  for(const map of p.maps){
   const terrain=terrains[map.id];
-  if(!terrain||maps.has(map.id)||map.width!==terrain.width||map.height!==terrain.height||typeof map.credit!=='string')throw Error('Unsupported map geometry');
+  if(!terrain||maps.has(map.id)||map.width!==terrain.width||(map.height!==terrain.height&&!(map.id==='meadow'&&map.height===335))||typeof map.credit!=='string')throw Error('Unsupported map geometry');
   maps.add(map.id);
   const size=pngSize(await header(root,map.file));if(!size||size.width!==map.width||size.height!==map.height)throw Error('Map geometry mismatch');
-  if(map.layers&&(!Array.isArray(map.layers)||map.layers.length>8))throw Error('Too many map layers');
+  if(map.layers&&(!Array.isArray(map.layers)||map.layers.length>16))throw Error('Too many map layers');
   for(const layer of map.layers||[]){
-   if(![layer.x,layer.y,layer.w,layer.h,layer.frames,layer.frameMs].every(Number.isInteger)||layer.x<0||layer.y<0||layer.w<1||layer.h<1||layer.x+layer.w>map.width||layer.y+layer.h>map.height||layer.frames<2||layer.frames>64||layer.frameMs<50||layer.frameMs>2000||typeof layer.credit!=='string')throw Error('Invalid animated layer');
+   if(![layer.x,layer.y,layer.w,layer.h,layer.frames].every(Number.isInteger)||layer.x<0||layer.y<0||layer.w<1||layer.h<1||layer.x+layer.w>map.width||layer.y+layer.h>map.height||layer.frames<2||layer.frames>64||typeof layer.credit!=='string')throw Error('Invalid animated layer');
+   if(layer.durations ? (!Array.isArray(layer.durations)||layer.durations.length!==layer.frames||!layer.durations.every(d=>Number.isInteger(d)&&d>0&&d<=600)) : (!Number.isInteger(layer.frameMs)||layer.frameMs!<50||layer.frameMs!>2000))throw Error('Invalid layer timing');
    const sheet=pngSize(await header(root,layer.file));if(!sheet||sheet.width!==layer.w*layer.frames||sheet.height!==layer.h)throw Error('Layer geometry mismatch');
   }
  }

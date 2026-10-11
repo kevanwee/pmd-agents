@@ -60,3 +60,14 @@ Directory presence does not prove which version is active or that hooks work. In
 | PMD SpriteCollab `AnimData.xml` | Variable frame dimensions/durations, animation aliases, attack rush/hit/return frame indices |
 
 Preserve native artwork and coordinate systems. Public availability is not proof of redistribution permission.
+
+
+## Native map animation, 11 October 2026
+
+[pret/pmd-red](https://github.com/pret/pmd-red/tree/013475aa04f5be3191e5527c186d9bfceae7cae0)
+contains the original map tiles, map row compression and palettes. At this pinned
+revision, `src/ground_bg.c` defines the BPC/BMA decoder and BPL palette player;
+`src/bg_palette_buffer.c` converts RGB bytes to GBA RGB555. The eleven chosen
+Friend Areas have no BPA tile-animation slots. Nine use native BPL cycles;
+Mushroom Forest and Rainbow Peak do not. This replaces the earlier unverified
+scenery status and guessed 120 ms stone timing (native is six ticks / 100 ms).

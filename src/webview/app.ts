@@ -219,7 +219,7 @@ function render() {
   for(const s of [...(pack?.sprites||[]),...(pack?.dummy?[pack.dummy]:[])])sidebar.append(node('h3',s.name),node('p',[...s.artists,...(s.portraitCredits||[])].join(' · '),'credit-text'));
   sidebar.append(node('p','SpriteCollab: individual asset terms are preserved in the local pack. Original game sprites are not automatically covered by the fan-art licence.','muted'));
   for(const map of pack?.maps||[]){sidebar.append(node('h3',map.name),node('p',map.credit,'muted'));for(const layer of map.layers||[])sidebar.append(node('p',layer.credit,'muted'));}
-  sidebar.append(node('p','Meadow breeze: original ambient animation. Map geometry is authored for this project, not extracted game collision data.','muted'),node('p','Pixelify Sans Project Authors · SIL OFL. Substitute: SpriteCollab source credits above. Move particles: original decorative effects.','muted'));
+  sidebar.append(node('p','Scenery uses native Red Rescue Team palette frames and timings. Map geometry is authored for this project, not extracted game collision data.','muted'),node('p','Pixelify Sans Project Authors · SIL OFL. Substitute: SpriteCollab source credits above. Move particles: original decorative effects.','muted'));
   sidebar.append(node('h3','Storage system'),node('p','Box icons come from the Smogon / Pokémon Showdown sprite repository (pinned): Gen 6/7 menu sprites, with Generation VIII and IX icons drawn by the Smogon community in the same style. Front and shiny sprites come from the PokeAPI sprites repository (pinned), whose later-generation fronts are the Smogon Sprite Project’s Gen 5-style sprites. All artwork depicts Nintendo, Creatures Inc. and GAME FREAK characters and is kept only in your local pack. Types come from PokeAPI data (BSD-3-Clause). The storage frames, wallpaper and menus are original CSS.','muted'));
  }
  const live=team.filter(a=>a.attention!=='none').length;
@@ -255,12 +255,8 @@ function draw(delta:number){
  if(bg)ctx.drawImage(bg,0,0);
  if(!quiet&&!reduced.matches)worldTime+=delta;
  const environmentFrames=[];
- for(const layer of map.layers||[]){const sheet=img(layer.file),f=Math.floor(worldTime/layer.frameMs)%layer.frames;environmentFrames.push(f);if(sheet)ctx.drawImage(sheet,f*layer.w,0,layer.w,layer.h,layer.x,layer.y,layer.w,layer.h);}
- if(map.id==='meadow'){
-  // Original ambient wind, separate from the unchanged game background.
-  for(let i=0;i<7;i++){const t=(worldTime+i*1390)%9800/9800,x=60+t*330,y=151+(i*23)%145;if(canStand({x:x+8,y},terrain())){ctx.globalAlpha=Math.sin(t*Math.PI)*.24;ctx.strokeStyle='#fff6b0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+10,y-2);ctx.lineTo(x+17,y-1);ctx.stroke();}}ctx.globalAlpha=1;
- }
- if(showPaths){ctx.fillStyle='#70dab72b';ctx.strokeStyle='#70dab7';for(const [index,polygon] of [terrain().ground,...terrain().obstacles].entries()){ctx.beginPath();polygon.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fillStyle=index?'#e86c664d':'#70dab72b';ctx.fill();ctx.stroke();}}
+ for(const layer of map.layers||[]){const sheet=img(layer.file),f=layer.durations?frameAt({...layer,durations:layer.durations,rows:1,anchors:[],hit:0},worldTime):Math.floor(worldTime/layer.frameMs!)%layer.frames;environmentFrames.push(f);if(sheet)ctx.drawImage(sheet,f*layer.w,0,layer.w,layer.h,layer.x,layer.y,layer.w,layer.h);}
+ if(showPaths){ctx.fillStyle='#70dab72b';ctx.strokeStyle='#70dab7';for(const [index,polygon] of [...(terrain().zones??[terrain().ground]),...terrain().obstacles].entries()){ctx.beginPath();polygon.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fillStyle=index>=(terrain().zones?.length??1)?'#e86c664d':'#70dab72b';ctx.fill();ctx.stroke();}}
  canvas.dataset.map=map.id;canvas.dataset.environment=JSON.stringify(environmentFrames);canvas.dataset.worldTime=String(worldTime);
  const list=inClearing();
  const now=Date.now(),still=quiet||reduced.matches;

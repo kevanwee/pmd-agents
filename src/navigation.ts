@@ -1,8 +1,9 @@
+import areas from '../assets/friend-areas.json';
 import type {Point} from './world';
-export interface Terrain {width:number;height:number;ground:Point[];obstacles:Point[][];stations:Point[]}
+export interface Terrain {width:number;height:number;ground:Point[];zones?:Point[][];obstacles:Point[][];stations:Point[]}
 const points=(values:number[][])=>values.map(([x,y])=>({x,y}));
 export const terrains:Record<string,Terrain>={
- meadow:{width:456,height:335,
+ meadow:{width:456,height:336,
   ground:points([[85,163],[135,143],[190,154],[213,142],[253,143],[291,157],[344,153],[365,174],[354,203],[385,226],[407,255],[335,260],[294,310],[163,310],[124,260],[48,255],[60,230],[90,198]]),
   obstacles:[points([[216,190],[225,196],[242,186],[263,207],[246,220],[238,245],[246,270],[212,274],[208,247],[217,224],[194,211],[200,194]])],
   stations:points([[116,218],[333,214],[155,169],[302,169],[100,246],[280,285]])},
@@ -16,7 +17,7 @@ export function inside(p:Point,polygon:Point[]){
   const a=polygon[i],b=polygon[j];if((a.y>p.y)!==(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)hit=!hit;
  }return hit;
 }
-export function canStand(p:Point,terrain:Terrain){return [{x:0,y:0},{x:-5,y:0},{x:5,y:0},{x:0,y:4}].every(o=>{const q={x:p.x+o.x,y:p.y+o.y};return inside(q,terrain.ground)&&!terrain.obstacles.some(poly=>inside(q,poly));});}
+export function canStand(p:Point,terrain:Terrain){return [{x:0,y:0},{x:-5,y:0},{x:5,y:0},{x:0,y:4}].every(o=>{const q={x:p.x+o.x,y:p.y+o.y};return (terrain.zones??[terrain.ground]).some(zone=>inside(q,zone))&&!terrain.obstacles.some(poly=>inside(q,poly));});}
 export function segment(a:Point,b:Point,terrain:Terrain){
  const n=Math.max(1,Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)/2));
  for(let i=0;i<=n;i++)if(!canStand({x:a.x+(b.x-a.x)*i/n,y:a.y+(b.y-a.y)*i/n},terrain))return false;return true;
@@ -49,4 +50,20 @@ export class Navigator {
    const path=this.route(from,p);if(path.length)return path;
   }return [];
  }
+}
+
+for(const area of areas){
+ const zones=area.zones.map(points);
+ const terrain:Terrain={width:area.size[0],height:area.size[1],ground:zones[0],zones,obstacles:area.obstacles.map(points),stations:[]};
+ // Spread workstations over the same conservative floor used by navigation.
+ const nav=new Navigator(terrain);
+ const candidates=nav.cells.filter(p=>segment(p,{x:p.x+29,y:p.y},terrain));
+ candidates.sort((a,b)=>score(b)-score(a));
+ const anchor=candidates[0];
+ for(let i=candidates.length-1;i>=0;i--)if(!nav.route(anchor,candidates[i]).length)candidates.splice(i,1);
+ while(terrain.stations.length<6&&candidates.length){
+  candidates.sort((a,b)=>score(b)-score(a));terrain.stations.push(candidates.shift()!);
+ }
+ function score(p:Point){return terrain.stations.length?Math.min(...terrain.stations.map(s=>Math.hypot(p.x-s.x,p.y-s.y))):-Math.hypot(p.x-terrain.width/2,p.y-terrain.height*.65);}
+ terrains[area.id]=terrain;
 }

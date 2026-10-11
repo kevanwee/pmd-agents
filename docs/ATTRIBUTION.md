@@ -51,3 +51,16 @@ Since 0.4.4 the game view's box icons come from the [Smogon / Pokémon Showdown 
 ## Animated scenery and public source, 0.3.0
 
 The owner authorized public repository visibility on 10 October 2026. Source artwork remains excluded from Git and VSIX; curated demo screenshots remain attributed. Transform Forest imports the mirror's unmodified background and crops its 32-pose stone sheet, with source receipts. Original ripper: Toastypk. Mirror: [Pamtre Berry / Taliax](https://pamtre-berry.neocities.org/articles/friendareas). The mirror’s stone poses are JPEG-derived; the importer preserves that limitation and does not call them lossless. Playback at 120ms per pose is this project’s chosen timing because original timing was not supplied. Thunder Meadow breeze lines and navigation polygons are original implementation work, not ripped game weather or collision data.
+
+
+## Native scenery, 0.4.5
+
+Original Red Rescue Team map data is obtained from pret/pmd-red at
+`013475aa04f5be3191e5527c186d9bfceae7cae0`, under `data/map_bg/`. Per-map receipts
+record each BPC, BMA and BPL URL and SHA-256; the pack manifest also hashes every
+derived PNG and receipt. Rendering expands RGB555 and extracts transparent
+palette-bank strips without invented environmental effects. Original game art
+retains its owners' rights; these files are `local-reference-only`, excluded from
+Git and the VSIX. The decompilation source's availability is not an artwork licence.
+The independent importer uses the documented binary layout and playback behavior.
+The previous Pamtre/JPEG scenery is no longer used by newly imported packs.

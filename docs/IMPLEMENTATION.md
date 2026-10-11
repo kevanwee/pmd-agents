@@ -156,3 +156,23 @@ Exercise live native Claude chat and both clients after hook setup/trust, includ
 ## 0.4.3: workspace discovery diagnostics
 
 A live sanitized probe saw Codex generation/tool events for the chat project, while the sole guild lease watched a different sibling project. No folder was hardcoded; the empty guild hid the mismatch. Snapshots now include current workspace display names, bounded scans count recent supported files outside that scope without exposing their paths, and the empty state explains the actionable cause. Add project folder delegates to VS Code's folder picker. Regression coverage uses random temporary project roots, separate instances and a workspace switch; no cross-workspace events are attached. Known format/version gates remain unchanged.
+
+
+## 0.4.5: eleven native Friend Areas
+
+The scenery importer decodes pinned Red Rescue Team BPC/BMA/BPL data into local
+backgrounds and transparent palette-bank strips. Native integer tick durations
+replace the guessed stone timing and authored meadow breeze. Nine maps animate;
+Mushroom Forest and Rainbow Peak contain no native palette/tile cycles.
+`npm run import:scenery -- --output <pack>` updates only maps and receipts,
+preserving imported species. New installs include all eleven areas.
+
+Navigation accepts a union of floor polygons; each map has six reachable work
+stations whose training targets also lie on safe floor. Stable meadow/forest ids
+and legacy millisecond layers remain supported. Quiet/reduced-motion and hidden
+view scheduling still govern animation, independently of observed agent status.
+Sources, derived maps and animation strips remain excluded from Git and VSIX.
+
+Validation: 63 TypeScript tests, three decoder fixtures, typecheck/build, and
+browser checks for every map's actual animated pixels without agents, Quiet,
+reduced motion, training routes, storage, session placement and narrow layout.

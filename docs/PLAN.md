@@ -274,3 +274,8 @@ The owner requested Substitute training and all Gen 1 starter evolution lines. V
 ## 10 October 2026 usability checkpoint
 
 Version 0.3.0 implements map selection, animated Transform Forest scenery, expanded Thunder Meadow geometry, bounded route finding, longer exploration circuits, camera zoom/drag and persistent map preference. The owner explicitly requested automatic detection and public visibility. Workspace auto mode is now a distinct, labelled scope: matching supported recent chats reconnect automatically, but folder equality is not presented as native-window proof. A hash-only heartbeat registry suspends automatic claims for overlapping guild windows. Exact-window manual binding restoration and full process reconciliation remain future work. The repository is public by explicit authorization.
+
+
+## 11 October 2026 scenery checkpoint
+
+0.4.5 expands to eleven Friend Areas with native palette frames and timings, validated navigation and a scenery-only local importer. See IMPLEMENTATION.md and RESEARCH.md. Provider observation remains unchanged.

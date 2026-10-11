@@ -10,3 +10,5 @@ artifacts/
 assets/local/
 media/
 .vscode-test/
+
+__pycache__/
