@@ -217,3 +217,30 @@ Explorer resolution and native ownership binding, two independent native owner
 windows with minimize/dismiss/restore/close checks, actual WebView2 artwork loads,
 and packaged-helper startup/pipe-EOF cleanup. Screenshots and test profiles stay
 under ignored artifacts. Artwork remains outside Git and the VSIX.
+
+## 0.5.1: release preparation (12 October 2026)
+
+The README now leads with installation, supported-platform limits and the
+separate artwork requirement. SETUP.md covers missing assets, default local
+observation, optional hooks, updates, disabling and uninstalling. Original code
+has a proprietary installation/use licence; third-party rights remain separate.
+
+Packaging derives its version from package.json, rejects files outside a fixed
+16-file allowlist, compares shipped code/native/licence bytes to the build and
+writes a SHA-256 checksum only after verification. The package-install harness
+uses the installed VS Code CLI wrapper (including versioned installations), an
+isolated profile and extension directory, synthetic provider records and an
+explicitly empty artwork folder. It loads the installed VSIX's extension bytes
+in the VS Code test host; source test code stays outside the VSIX.
+
+Validation: typecheck and 63 source tests passed. A fresh-profile VSIX install
+passed Explorer/full-guild initialization, native ownership binding, synthetic
+Codex auto-attachment, real terminal shell events and overlapping-lease recovery
+without inheriting the developer's artwork. This does not validate a new user's
+rights to download artwork, a fresh upstream artwork import, live Claude, or
+remote/non-Windows hosts. Existing 0.5.0 runtime/UI coverage remains applicable;
+the application runtime source is unchanged.
+
+The candidate and checksum remain local. The owner chose to keep the fan version
+and discuss remaining IP risks before publishing a GitHub release. Preparing or
+merging this increment is not public VSIX publication or artwork clearance.

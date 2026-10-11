@@ -32,3 +32,5 @@
 - 11 October 2026: Reproduce original Friend Area animation (especially flowing magma) using sourced native frames and timings. Expand the available bases, review, push and merge when ready. Keep all game map data in the excluded local pack.
 
 - 11 October 2026: PMD Agents should live in a compact Explorer widget in each VS Code instance. Minimizing VS Code should reveal an always-on-top desktop companion; minimizing that companion dismisses it independently. Keep the full guild available and match the actual native owner without guessing from a project path. The owner authorized creating/reviewing/merging PRs and installing the update.
+
+- 11–12 October 2026: Prepare the full GitHub release with first-run setup near the top of README. Original code uses a proprietary licence allowing installation and use while retaining redistribution control. The owner chose to retain the fan version and discuss remaining IP risks before publishing the VSIX. Prepare and validate the candidate; do not represent attribution, free distribution or local asset imports as permission. Keep the legal working report and source audit private and outside Git.

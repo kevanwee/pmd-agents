@@ -284,3 +284,13 @@ Version 0.3.0 implements map selection, animated Transform Forest scenery, expan
 ## 11 October 2026 widget checkpoint
 
 The owner requested a persistent Explorer widget in every VS Code instance, with an independently dismissible desktop companion when VS Code is minimized, and authorized PR creation, merge and installation. Version 0.5.0 implements this for local Windows x64 with a sidebar fallback elsewhere. See IMPLEMENTATION.md for actual scope and validation; provider-observation limits remain unchanged.
+
+## 12 October 2026 release checkpoint
+
+The owner requested a complete GitHub release and selected a proprietary licence
+for original code. Version 0.5.1 prepares onboarding, packaging verification,
+checksums, a fresh-profile install test and a manual release checklist. The fan
+version is retained; public VSIX publication awaits the owner's requested risk
+discussion. No attribution, local import path or code licence is treated as
+permission for third-party artwork or branding. See IMPLEMENTATION.md for
+tested scope and RELEASING.md for the publication procedure.

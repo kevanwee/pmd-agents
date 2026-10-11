@@ -8,7 +8,23 @@ PMD Agents is a local VS Code extension inspired by [Pixel Agents](https://githu
 ![Development](https://img.shields.io/badge/status-local%20development-e5c77d)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.109%2B-007acc)
 
-> **Development build 0.5.0.** Terminal tracking and live Codex transcript observation are verified locally. Native Claude records have been replayed successfully; live Claude chat tracking still needs validation. This is an unofficial, non-commercial fan project.
+> **Release preparation: 0.5.1.** No public VSIX release is available yet. Artwork and branding permissions remain unresolved. Terminal tracking and live Codex transcript observation are verified locally; live native Claude chat tracking remains unverified.
+
+## Start here
+
+The installable package is for **local Windows x64 and VS Code 1.109+**. The desktop widget also needs the [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/). WSL, SSH, containers and other operating systems are not release-tested. Install the extension in every VS Code profile where you want it; new trusted windows in that profile activate it automatically.
+
+When a release is published:
+
+1. Download the `.vsix` and matching `.sha256` file from [GitHub Releases](https://github.com/kevanwee/pmd-agents/releases). Compare the checksum with `Get-FileHash .\pmd-agents-0.5.1.vsix -Algorithm SHA256`.
+2. In VS Code, run **Extensions: Install from VSIX**, select the download, then **Developer: Reload Window**. Node.js, npm and Python are not needed to install or run the VSIX.
+3. Open **PMD Agents** in Explorer, then **Open guild**. Trust only workspaces you trust to run local extensions.
+4. Under **Connections → Choose asset pack**, select a folder containing a compatible `manifest.json` and artwork you are permitted to use. **The VSIX includes no game artwork.** Without a pack, session observation works but the animated scene is unavailable. Existing source import tools need a source checkout, Python and Pillow; see [Import artwork](#import-artwork). They do not establish permission to use the downloaded material.
+5. Open your coding project's folder. Recent supported Codex/Claude records are observed locally by default. Keep the status bar visible until the PMD item's tooltip confirms the desktop widget follows this window. Minimize VS Code to show it; minimizing the widget dismisses it for that cycle.
+
+For local development before a public release, follow [Run locally](#run-locally). For missing art, connection issues, updates and removal, see the [setup guide](docs/SETUP.md). Maintainers: use the [release checklist](docs/RELEASING.md).
+
+The original code uses a [proprietary use licence](LICENSE): installation and personal use, including your own work, are allowed; redistribution requires permission, subject to the licence's exceptions. Third-party material has separate terms. A free download, attribution or an unofficial-project notice is not artwork clearance.
 
 ![PMD Agents showing Eevee training, Riolu scouting and Ceruledge waiting for approval in Transform Forest](docs/screenshots/guild.png)
 
@@ -61,7 +77,7 @@ Move colours follow the species' primary type for every type, from the pack's ow
 The **PMD Agents** view lives in Explorer alongside your files. Drag its heading to
 place it below Outline, or resize it like other sidebar views. VS Code remembers
 your placement. **PMD Agents: Show Sidebar Widget** brings it back if hidden.
-**Open guild** opens the full team, activity journal and Pok?mon PC.
+**Open guild** opens the full team, activity journal and Pokémon PC.
 
 On **local Windows x64**, the desktop companion starts automatically. Minimize
 VS Code and its guild appears above other apps; restore VS Code and it hides.
@@ -99,7 +115,7 @@ npm run package
 
 In VS Code:
 
-1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.5.0.vsix`.
+1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.5.1.vsix`.
 2. Run **Developer: Reload Window**, then look for **PMD Agents** in Explorer. **Open guild** opens its full controls.
 3. Choose a local artwork pack under **Connections → Choose asset pack**.
 4. Every discovered session spawns a Pokémon as it appears. **Connections → Auto-attach** controls this (and **Workspace auto-connect** the narrower, verified-workspace mode). If another guild window shares the same folders, automatic attachment pauses and you choose the intended session manually.
@@ -258,7 +274,7 @@ Built by **Kevan Wee**. Inspired by **Pablo De Lucca and the Pixel Agents contri
 
 Sprite/portrait records credit **CHUNSOFT, baronessfaron, Fearless-Quit, Top_Kec, JFain, 0palite, Emboarger, Emmuffin, Grimlin, G〜 and bwappi**, plus contributors recorded upstream as Discord IDs **199989579682414592** and **276175146304405514**, sourced through [PMD SpriteCollab](https://github.com/PMDCollab/SpriteCollab). Pokémon imported through the storage system carry their own contributors from the same credit records into the in-guild Credits view and the local manifest. The storage system's box icons come from the [Smogon / Pokémon Showdown sprite repository](https://github.com/smogon/sprites) (Gen 6/7 menu sprites; Generation VIII and IX icons by the Smogon community), and its front and shiny sprites from the [PokeAPI sprites repository](https://github.com/PokeAPI/sprites) (later generations by the Smogon Sprite Project), each at a pinned revision. All depict Nintendo, Creatures Inc. and GAME FREAK characters, and its type data comes from [PokeAPI](https://github.com/PokeAPI/pokeapi) (BSD-3-Clause); both stay in the local pack with receipts. Original game sprites and individual fan-art terms are distinguished in the pack; a repository-wide fan-art licence is not assumed to cover every asset. **Pixelify Sans Project Authors** provide the font under SIL OFL. Transform Forest and its stone frames credit **Toastypk**, with the **Pamtre Berry / Taliax** mirror and original source receipts retained locally. Thunder Meadow is a local game-map reference; its original ripper remains unresolved. Screenshots contain rendered third-party artwork and retain those attributions.
 
-Original project code is currently **all rights reserved**; see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md). This repository does not grant redistribution rights to third-party artwork. Source sheets and game maps remain outside the repository and installable package.
+Original project code is **proprietary**, with permission to install, run and privately modify it; see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md). Redistribution requires permission, subject to the licence's exceptions. This repository does not grant rights to third-party artwork. Source sheets and game maps remain outside the repository and installable package; rendered artwork is present in the public screenshots.
 
 **PMD Agents is an unofficial, non-commercial Pokémon Mystery Dungeon fan project.** It is not affiliated with, endorsed by or sponsored by Nintendo, Creatures Inc., GAME FREAK, The Pokémon Company or Spike Chunsoft. Pokémon and Pokémon Mystery Dungeon names, characters and game artwork belong to their respective owners.
 
