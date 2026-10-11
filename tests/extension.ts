@@ -9,10 +9,18 @@ export async function run(){
  try{
   await new Promise(r=>setTimeout(r,700));
   assert.ok(api.snapshot().some((a:any)=>a.provider==='terminal'&&a.attached&&!a.ended));
+  await vscode.commands.executeCommand('pmdAgents.showWidget');
+  const widgetDeadline=Date.now()+10000;while(!api.widgetReady()&&Date.now()<widgetDeadline)await new Promise(r=>setTimeout(r,100));
+  assert.ok(api.widgetReady(),'Explorer widget did not resolve');
   await vscode.commands.executeCommand('pmdAgents.open');
   const webDeadline=Date.now()+10000;
   while(!api.ready()&&Date.now()<webDeadline)await new Promise(r=>setTimeout(r,100));
   assert.ok(api.ready(),'Webview JavaScript failed to initialize');
+  if(process.platform==='win32'){
+   const desktopDeadline=Date.now()+20000;while(!api.desktopState().bound&&!api.desktopState().error&&Date.now()<desktopDeadline)await new Promise(r=>setTimeout(r,200));
+   assert.equal(api.desktopState().error,'','Native widget startup failed');
+   assert.ok(api.desktopState().bound,'Native widget did not identify its VS Code window');
+  }
   const autoDeadline=Date.now()+8000;
   while(!api.snapshot().some((a:any)=>a.provider==='codex'&&a.attached)&&Date.now()<autoDeadline)await new Promise(r=>setTimeout(r,100));
   const automatic=api.snapshot().find((a:any)=>a.provider==='codex'&&a.attached);

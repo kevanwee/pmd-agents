@@ -176,3 +176,44 @@ Sources, derived maps and animation strips remain excluded from Git and VSIX.
 Validation: 63 TypeScript tests, three decoder fixtures, typecheck/build, and
 browser checks for every map's actual animated pixels without agents, Quiet,
 reduced motion, training routes, storage, session placement and narrow layout.
+
+
+## 0.5.0: Explorer widget and Windows desktop companion
+
+A `WebviewViewProvider` contributes a default-visible Explorer guild. The full
+editor guild remains available. Both use the existing renderer/session snapshot;
+compact mode keeps the map, Friend Area selector, Quiet and Open guild controls.
+Map/Quiet preferences broadcast across all surfaces and persist per workspace.
+View message handlers are disposed on remount; delayed asset reads cannot revive
+views or helpers after disposal.
+
+A Windows x64 WinForms helper hosts the same renderer in the installed WebView2
+runtime. It is built from `src/native/PmdWidget.cs`, with a hash-pinned SDK. The
+extension starts one hidden helper per local window via inherited JSON pipes;
+there is no desktop HTTP/control listener. An activation-unique accessibility
+label on the PMD status-bar item identifies the owner among windows of the same
+VS Code executable. Win32 window properties and process identity guard against
+handle reuse. No folder/title matching and no change to provider session scope.
+The status item must be visible for initial matching; an unmatched helper still
+supports manual pop-out and retries matching. Once bound, the label is normal.
+
+`IsIconic` drives automatic pop-out, not the VS Code focus/active flags. The form
+is resizable, always on top, and automatically shows without taking focus. Its
+own minimize/close dismisses it until manual show or the next owner minimize
+cycle. Owner restoration hides it; owner close or pipe EOF shuts it down. Tray
+controls recover a dismissed widget. Bounds are clamped to an available monitor.
+Unique WebView2 cache folders are removed on child close. The setting can stop and
+restart the helper without affecting observation or the sidebar.
+
+Virtual HTTPS origins map only packaged UI and the configured artwork pack;
+external requests, navigation, downloads, popups and permissions are blocked.
+Only ready, scene, quiet and open-guild messages cross from the native view.
+Missing native/runtime support leaves the sidebar available. Non-Windows,
+non-x64 and remote hosts skip the helper; trust restrictions remain unchanged.
+
+Validation includes 63 source tests, typecheck/build, existing full-guild browser
+regressions, compact 260x240 layout/live-feed/motion/control checks, real VS Code
+Explorer resolution and native ownership binding, two independent native owner
+windows with minimize/dismiss/restore/close checks, actual WebView2 artwork loads,
+and packaged-helper startup/pipe-EOF cleanup. Screenshots and test profiles stay
+under ignored artifacts. Artwork remains outside Git and the VSIX.

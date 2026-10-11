@@ -7,11 +7,11 @@ import {Placement} from '../placement';
 import {Navigator,terrains,segment,canStand} from '../navigation';
 import {frameAt,facing,type Pack,type Species,type Point} from '../world';
 import {PokemonPc} from './pc';
-declare global {interface Window {PMD_BOOT:{workspaces?:string[];scene?:string;autoConnect?:boolean;autoAttach?:boolean;autoState?:string;membership?:Record<string,string>;pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;outsideWorkspace?:number;unsupported:number;readErrors:number;lastScan:number;historyFolders?:number;historyChecked?:number;historyCapped?:boolean};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
+declare global {interface Window {PMD_BOOT:{presentation?:'full'|'widget'|'desktop';quiet?:boolean;workspaces?:string[];scene?:string;autoConnect?:boolean;autoAttach?:boolean;autoState?:string;membership?:Record<string,string>;pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;outsideWorkspace?:number;unsupported:number;readErrors:number;lastScan:number;historyFolders?:number;historyChecked?:number;historyCapped?:boolean};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
 const host=window.acquireVsCodeApi?.();
 const boot=window.PMD_BOOT;
 const pack=boot.pack;
-let sceneId=host?.getState()?.scene||boot.scene||'forest';
+let sceneId=boot.scene||host?.getState()?.scene||'forest';
 const scene=()=>pack?.maps.find(m=>m.id===sceneId)||pack?.maps[0];
 const terrain=()=>terrains[scene()?.id||'meadow'];
 const navigation=new Map<string,Navigator>();
@@ -26,7 +26,7 @@ let journal=boot.journal||{};
 let links=boot.links||{},diagnostics=boot.diagnostics,observationEnabled=boot.observationEnabled;
 const displayStatus=(a:Agent)=>a.ended?status(a):!demo&&evidence[a.id]?.connection==='paused'?'Observation paused':!demo&&evidence[a.id]?.connection==='unavailable'?'Observation unavailable':status(a);
 const sourceLabel=(a:Agent)=>{const e=evidence[a.id];return e?.source==='transcript'?'Local transcript · '+(e.client||'client')+' '+(e.version||'')+(e.partial?' · partial history':''):e?.source==='hook'?'Observer hook':'Shell integration';};
-let selected='',selectedByUser=false,demo=false,quiet=host?.getState()?.quiet??false,visible=true,area=0;
+let selected='',selectedByUser=false,demo=false,quiet=boot.quiet??host?.getState()?.quiet??false,visible=true,area=0;
 let hookSetup:{id:string;provider:string;remove?:boolean;file:string;preview:string;installing?:boolean}|undefined;
 let hookResult:{provider?:string;remove?:boolean;error?:string}|undefined,reviewOpen=false;
 let tab:'team'|'activity'|'connections'|'credits'='team';
@@ -34,6 +34,14 @@ const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<header><div class="brand"><span class="guild-mark" aria-hidden="true">✦</span><div><span class="eyebrow">EXPLORATION GUILD</span><h1>PMD Agents</h1></div></div><div class="header-actions"><span id="mode" class="mode">Current window</span><button id="quiet" aria-pressed="false" title="Pause world animations">Quiet</button><button id="demo">Try demo</button></div></header>
 <main><section class="world-panel" aria-label="Guild world"><div class="scene-heading"><div><span class="eyebrow">FRIEND AREA 01</span><h2>Thunder Meadow</h2></div><div class="scene-controls"><select id="scene" aria-label="Friend area"></select><button id="zoom">Zoom in</button><button id="paths" aria-pressed="false">Walkable area</button></div></div><div class="canvas-wrap"><canvas aria-label="Pokémon guild. Use the team list to select a session."></canvas><div id="empty" class="empty"></div><div class="world-tools"><span id="population"></span><button id="area" hidden>Next clearing</button></div></div><section id="details" class="dialogue" aria-label="Selected session"></section></section><aside><nav aria-label="Guild information"><button data-tab="team" aria-pressed="true">Team</button><button data-tab="activity">Activity</button><button data-tab="connections">Connections</button><button data-tab="credits">Credits</button></nav><div id="sidebar"></div></aside></main><footer><span>Unofficial, non-commercial fan project</span><button id="credits">Credits & sources</button><span id="live-status" role="status" aria-live="polite"></span></footer>`;
 const canvas=app.querySelector('canvas')!;
+const compact=boot.presentation==='widget'||boot.presentation==='desktop';
+if(compact){
+ document.body.classList.add('compact');
+ app.insertAdjacentHTML('afterbegin','<div class="widget-toolbar"><button id="widget-open" title="Open the full guild">Open guild</button><button id="widget-quiet" aria-pressed="false">Quiet</button>'+(boot.presentation==='widget'?'<button id="widget-desktop" title="Show desktop widget">Pop out</button>':'')+'</div>');
+ app.querySelector('#widget-open')!.addEventListener('click',()=>send({type:'openGuild'}));
+ app.querySelector('#widget-desktop')?.addEventListener('click',()=>send({type:'desktop'}));
+ app.querySelector('#widget-quiet')!.addEventListener('click',()=>app.querySelector<HTMLButtonElement>('#quiet')!.click());
+}
 const ctx=canvas.getContext('2d')!;
 const sidebar=app.querySelector<HTMLDivElement>('#sidebar')!;
 const details=app.querySelector<HTMLDivElement>('#details')!;
@@ -93,6 +101,7 @@ function render() {
  app.querySelector('#demo')!.textContent=demo?'Exit demo':'Try demo';
  app.querySelector('#quiet')!.setAttribute('aria-pressed',String(quiet));
  app.querySelector('#quiet')!.textContent=quiet?'Resume motion':'Quiet';
+ const widgetQuiet=app.querySelector('#widget-quiet');if(widgetQuiet){widgetQuiet.textContent=quiet?'Resume':'Quiet';widgetQuiet.setAttribute('aria-pressed',String(quiet));}
  const pages=Math.max(1,placement.pages().length);
  if(!placement.pages().includes(area))area=placement.pages()[0]??0;
  app.querySelector('#population')!.textContent=team.length+' '+(team.length===1?'session':'sessions')+(pages>1?' · clearing '+(placement.pages().indexOf(area)+1)+' / '+pages:'');
@@ -100,7 +109,8 @@ function render() {
  empty.replaceChildren();empty.hidden=!!pack&&team.length>0&&!failedImages.size;
  if(!empty.hidden){empty.append(node('h3',failedImages.size?'An artwork file could not load':!pack?'Your guild is ready':'A quiet moment'));
   empty.append(node('p',failedImages.size?'Choose the complete asset pack again.':!pack?boot.assetError||'Choose your local PMD asset pack.':connectionStatus({workspaces,autoConnect,autoAttach,autoState,observationEnabled,diagnostics})));
-  if(!pack||failedImages.size)empty.append(button('Choose asset pack',()=>send({type:'assets'}),'primary'));
+  if(compact)empty.append(button('Open guild',()=>send({type:'openGuild'}),'primary'));
+  else if(!pack||failedImages.size)empty.append(button('Choose asset pack',()=>send({type:'assets'}),'primary'));
   else {empty.append(button('Connection details',()=>{tab='connections';render();},'primary'));if(!workspaces?.length||diagnostics?.outsideWorkspace)empty.append(button('Add project folder',()=>send({type:'addWorkspaceFolder'})));}
  }
  details.replaceChildren();
@@ -325,7 +335,7 @@ function restart(){cancelAnimationFrame(frame);frame=0;last=0;draw(0);if(visible
 new ResizeObserver(()=>draw(0)).observe(canvas);
 document.addEventListener('visibilitychange',restart);reduced.addEventListener('change',restart);
 app.addEventListener('focusout',e=>{if(e.target instanceof HTMLSelectElement)setTimeout(render,0);});
-app.querySelector('#quiet')!.addEventListener('click',()=>{quiet=!quiet;host?.setState({...host.getState(),quiet,scene:scene()?.id});render();restart();});
+app.querySelector('#quiet')!.addEventListener('click',()=>{quiet=!quiet;send({type:'quiet',quiet});host?.setState({...host.getState(),quiet,scene:scene()?.id});render();restart();});
 app.querySelector('#scene')!.addEventListener('change',()=>{sceneId=(app.querySelector('#scene') as HTMLSelectElement).value;actors.clear();pan={x:0,y:0};worldTime=0;host?.setState({...host.getState(),quiet,scene:sceneId});send({type:'scene',id:sceneId});render();});
 app.querySelector('#zoom')!.addEventListener('click',()=>{zoom=zoom===1?1.75:1;pan={x:0,y:0};render();});
 app.querySelector('#paths')!.addEventListener('click',()=>{showPaths=!showPaths;render();});
@@ -354,7 +364,7 @@ window.addEventListener('message',event=>{
  const m=event.data;
  if(m.type==='hookSetup'){hookSetup=m;hookResult=undefined;tab='connections';render();}
  if(m.type==='hookResult'){hookSetup=undefined;hookResult=m;tab='connections';render();}
- if(m.type==='snapshot'){workspaces=m.workspaces??workspaces;autoConnect=m.autoConnect??autoConnect;autoAttach=m.autoAttach??autoAttach;autoState=m.autoState;membership=m.membership||{};journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
+ if(m.type==='snapshot'){const motionChanged=(typeof m.quiet==='boolean'&&m.quiet!==quiet)||(m.scene&&m.scene!==sceneId);if(typeof m.quiet==='boolean')quiet=m.quiet;if(m.scene&&m.scene!==sceneId){sceneId=m.scene;actors.clear();pan={x:0,y:0};worldTime=0;}if(motionChanged)restart();workspaces=m.workspaces??workspaces;autoConnect=m.autoConnect??autoConnect;autoAttach=m.autoAttach??autoAttach;autoState=m.autoState;membership=m.membership||{};journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
  if(m.type==='visibility'){visible=m.visible;restart();}
  if(m.type==='dex')pc.setDex(m);
  if(m.type==='dexPortraits')pc.portraitsReady(m);
@@ -372,6 +382,7 @@ canvas.addEventListener('click',event=>{
  const rect=canvas.getBoundingClientRect(),dpr=devicePixelRatio||1;
  const x=((event.clientX-rect.left)*dpr-view.x)/view.scale,y=((event.clientY-rect.top)*dpr-view.y)/view.scale;
  const hit=inClearing().find(a=>{const p=actors.get(a.id)!.p;return Math.abs(p.x-x)<16&&y<p.y+5&&y>p.y-45;});
+ if(hit&&compact){send({type:'openGuild'});return;}
  if(hit){selectedByUser=true;selected=hit.id;render();}
 });
 render();restart();send({type:'ready'});
