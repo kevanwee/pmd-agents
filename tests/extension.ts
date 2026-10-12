@@ -1,15 +1,21 @@
-import {writeFile,unlink} from 'node:fs/promises';
+import {writeFile,unlink,appendFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import * as vscode from 'vscode';
 import assert from 'node:assert/strict';
 export async function run(){
  const extension=vscode.extensions.getExtension('kevanwee.pmd-agents');assert.ok(extension);
- const api=await extension.activate();
+ // Do not activate or reveal the extension here: startup itself must do both.
+ const activationDeadline=Date.now()+15000;
+ while(!extension.isActive&&Date.now()<activationDeadline)await new Promise(r=>setTimeout(r,100));
+ assert.ok(extension.isActive,'PMD did not activate automatically in a fresh window');
+ const api=extension.exports;
+ const startupDeadline=Date.now()+15000;
+ while(!api.widgetReady()&&Date.now()<startupDeadline)await new Promise(r=>setTimeout(r,100));
+ assert.ok(api.widgetReady(),'Explorer widget did not initialize automatically without Show Widget');
  const t=vscode.window.createTerminal({name:'PMD integration test'});
  try{
   await new Promise(r=>setTimeout(r,700));
   assert.ok(api.snapshot().some((a:any)=>a.provider==='terminal'&&a.attached&&!a.ended));
-  await vscode.commands.executeCommand('pmdAgents.showWidget');
   const widgetDeadline=Date.now()+10000;while(!api.widgetReady()&&Date.now()<widgetDeadline)await new Promise(r=>setTimeout(r,100));
   assert.ok(api.widgetReady(),'Explorer widget did not resolve');
   await vscode.commands.executeCommand('pmdAgents.open');
@@ -25,6 +31,14 @@ export async function run(){
   while(!api.snapshot().some((a:any)=>a.provider==='codex'&&a.attached)&&Date.now()<autoDeadline)await new Promise(r=>setTimeout(r,100));
   const automatic=api.snapshot().find((a:any)=>a.provider==='codex'&&a.attached);
   assert.ok(automatic,'Local chat did not automatically connect');assert.equal(api.sessions.membership.get(automatic.id),'workspace');
+  const claude=api.snapshot().find((a:any)=>a.provider==='claude'&&a.attached);
+  assert.ok(claude,'Claude 2.1.296 chat did not automatically connect');assert.equal(api.sessions.membership.get(claude.id),'workspace');
+  const cwd=vscode.workspace.workspaceFolders![0].uri.fsPath;
+  const claudeFile=join(process.env.CLAUDE_CONFIG_DIR!,'projects',cwd.replace(/[^a-zA-Z0-9-]/g,'-'),'fixture.jsonl');
+  await appendFile(claudeFile,JSON.stringify({type:'assistant',sessionId:'automatic-claude-session',cwd,version:'2.1.296',timestamp:new Date().toISOString(),message:{content:[{type:'text',text:'Synthetic fixture complete'}],stop_reason:'end_turn'}})+'\n');
+  const claudeDeadline=Date.now()+5000;
+  while(api.snapshot().find((a:any)=>a.id===claude.id)?.outcome!=='finished'&&Date.now()<claudeDeadline)await new Promise(r=>setTimeout(r,100));
+  assert.equal(api.snapshot().find((a:any)=>a.id===claude.id)?.outcome,'finished','Claude turn end did not stream into the guild');
   // Shell integration arrives asynchronously. Verify actual start/end through a harmless command.
   const deadline=Date.now()+15000;
   while(!t.shellIntegration&&Date.now()<deadline)await new Promise(r=>setTimeout(r,200));
@@ -63,5 +77,5 @@ export async function run(){
  await new Promise(r=>setTimeout(r,400));
  assert.ok(api.snapshot().some((a:any)=>a.provider==='terminal'&&a.ended));
  assert.equal(api.sessions.links.size,0);assert.equal(api.snapshot().find((a:any)=>a.id==='codex:probe').ended,false);
- console.log('PMD extension: automatic transcript attachment, real terminal lifecycle, shell command, webview and candidate routing passed.');
+ console.log('PMD extension: automatic widget startup, Codex/Claude transcript attachment, real terminal lifecycle, shell command, webview and candidate routing passed.');
 }

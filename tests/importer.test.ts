@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile,mkdtemp,rm,writeFile,mkdir,cp} from 'node:fs/promises';
 import {existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {join,dirname} from 'node:path';
 import {importSpecies,writeImport,ensurePortraits,artistsOf,cachedFetch} from '../src/importer';
 import {validateSpecies,loadPack} from '../src/assets';
 import {portraitFile} from '../src/dex';
@@ -12,7 +12,10 @@ const hasPack=existsSync('assets/local/manifest.json');
 function localFetch(species:string){
  return async(rel:string)=>{
   const anim=rel.match(/^sprite\/\d{4}\/([A-Za-z]+)-Anim\.png$/);
-  const path=anim?'assets/local/'+species+'/'+anim[1]+'.png':rel.startsWith('portrait/')&&rel.endsWith('Normal.png')?'assets/local/'+species+'/portrait.png':'assets/local/sources/'+rel;
+  const manifest=JSON.parse(await readFile('assets/local/manifest.json','utf8'));
+  const entry=manifest.sprites.find((s:any)=>s.id===species);
+  const sheet=anim&&Object.values(entry.animations).find((a:any)=>a.file.endsWith('/'+anim[1]+'.png')) as any;
+  const path=anim?'assets/local/'+sheet.file:rel.startsWith('portrait/')&&rel.endsWith('Normal.png')?'assets/local/'+species+'/portrait.png':'assets/local/sources/'+rel;
   return new Uint8Array(await readFile(path));
  };
 }
@@ -22,7 +25,7 @@ test('an in-memory import reproduces the Python importer\'s metadata for Eevee',
  const manifest=JSON.parse(await readFile('assets/local/manifest.json','utf8')),eevee=manifest.sprites.find((s:any)=>s.id==='eevee');
  for(const action of Object.keys(eevee.animations)){
   const {file:_f,...expected}=eevee.animations[action],{file,...actual}=result.species.animations[action];
-  assert.deepEqual(actual,expected,action);assert.equal(file,'dex/eevee-check/'+action+'.png');
+  assert.deepEqual(actual,expected,action);assert.equal(file,'dex/eevee-check/'+_f.split('/').pop());
  }
  assert.deepEqual(Object.keys(result.species.animations).sort(),Object.keys(eevee.animations).sort());
  assert.deepEqual(result.species.artists,eevee.artists);assert.deepEqual(result.species.portraitCredits,eevee.portraitCredits);
@@ -37,6 +40,8 @@ test('writing an import validates it, appends receipts and keeps the manifest lo
   await cp('assets/local/maps',join(dir,'maps'),{recursive:true});await cp('assets/local/eevee',join(dir,'eevee'),{recursive:true});await cp('assets/local/substitute',join(dir,'substitute'),{recursive:true});
   await writeFile(join(dir,'PixelifySans.woff2'),await readFile('assets/local/PixelifySans.woff2'));
   const full=JSON.parse(await readFile('assets/local/manifest.json','utf8'));
+  const portrait=full.sprites.find((s:any)=>s.id==='eevee').portrait;await mkdir(dirname(join(dir,portrait)),{recursive:true});await cp(join('assets/local',portrait),join(dir,portrait));
+  for(const a of Object.values(full.sprites.find((s:any)=>s.id==='eevee').animations) as any[]){await mkdir(dirname(join(dir,a.file)),{recursive:true});await cp(join('assets/local',a.file),join(dir,a.file));}
   await writeFile(join(dir,'manifest.json'),JSON.stringify({version:1,sprites:full.sprites.filter((s:any)=>s.id==='eevee'),dummy:full.dummy,maps:full.maps,files:[]}));
   const names=await readFile('assets/local/sources/spritebot_credits.txt','utf8');
   const result=await importSpecies({id:'eevee-shiny',name:'Eevee',dex:133,path:'0133',label:'Shiny'},localFetch('eevee'),names);

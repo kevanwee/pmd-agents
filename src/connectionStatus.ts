@@ -14,3 +14,13 @@ export function connectionStatus(state:{workspaces?:string[];observationEnabled?
  if(d.unsupported)return scope+'Recent activity uses an unsupported client format. See Connections for diagnostics.';
  return scope+'No recent supported chats found yet. Start a chat or terminal in this workspace.';
 }
+/** Explain why a discovered session is not already connected, without guessing its owner. */
+export function attachmentReason(state:{excluded?:boolean;autoState?:string;autoAttach?:boolean;autoConnect?:boolean;workspace?:string;connection?:string}){
+ if(state.excluded)return 'Previously removed from this guild. Attach once to include it again.';
+ if(state.connection==='paused')return 'Local observation is paused. Enable Observe Local Chats to resume.';
+ if(state.connection==='unavailable')return 'Its activity file is unavailable. Automatic connection will retry when it returns.';
+ if(state.autoState==='ambiguous')return 'Another guild window shares these folders. Automatic connection resumes when the overlap clears; attach only to choose this window now.';
+ if(state.autoState!=='single')return 'Checking window registrations. Automatic connection will retry without an attachment click.';
+ if(!state.autoAttach&&(!state.autoConnect||!state.workspace))return state.autoConnect?'This hook has no verified workspace yet. Enable Auto-attach to include it automatically.':'Automatic connection is off. Enable Auto-attach to include new sessions.';
+ return 'Automatic connection is pending; no attachment click is normally needed.';
+}

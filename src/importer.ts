@@ -7,6 +7,7 @@ import {decodePng,type Png} from './png';
 import {parseAnimData,resolveAnim} from './animdata';
 import {creditName} from './dex';
 import type {Species,Animation,Pack} from './world';
+import {COMBAT_ACTIONS} from './training';
 /** Every fetch is pinned to one SpriteCollab revision, the same one the Python importer uses. */
 export const REV='47e5b9920bc5b2b491c53b18076300dc6813f103';
 export const RAW=`https://raw.githubusercontent.com/PMDCollab/SpriteCollab/${REV}/`;
@@ -14,7 +15,7 @@ export type Fetch=(rel:string)=>Promise<Uint8Array>;
 export interface Receipt {file:string;source:string;sha256:string;distribution:string;changes:string}
 export interface ImportRequest {id:string;name:string;dex:number;path:string;label:string;element?:string;portraitPath?:string}
 export interface ImportResult {species:Species;files:Receipt[];written:Record<string,Uint8Array>}
-const REQUIRED=['Idle','Walk','Attack','Sleep'],OPTIONAL=['Shoot'];
+const REQUIRED=['Idle','Walk','Attack','Sleep'],OPTIONAL=COMBAT_ACTIONS.filter(a=>a!=='Attack');
 /** Fetch one pinned file over HTTPS with a size bound. Nothing else is ever downloaded. */
 export async function fetchPinned(rel:string,limit=4_000_000):Promise<Uint8Array> {
  if(!/^[A-Za-z0-9_./-]+$/.test(rel)||rel.includes('..'))throw Error('Invalid source path');
@@ -60,7 +61,7 @@ const sha=(b:Uint8Array)=>createHash('sha256').update(b).digest('hex');
 export async function importSpecies(req:ImportRequest,get:Fetch,names:string):Promise<ImportResult> {
  if(!/^[a-z0-9-]{1,48}$/.test(req.id)||!/^[0-9]{4}(\/[0-9]{4}){0,4}$/.test(req.path))throw Error('Invalid import request');
  const written:Record<string,Uint8Array>={},files:Receipt[]=[];
- const source=async(rel:string,target='sources/'+rel)=>{const data=await get(rel);written[target]=data;files.push({file:target,source:RAW+rel,sha256:sha(data),distribution:'local-reference-only',changes:'Unmodified'});return data;};
+ const source=async(rel:string,target='sources/'+rel)=>{if(written[target])return written[target];const data=await get(rel);written[target]=data;files.push({file:target,source:RAW+rel,sha256:sha(data),distribution:'local-reference-only',changes:'Unmodified'});return data;};
  const root='sprite/'+req.path+'/',dir='dex/'+req.id+'/';
  const data=parseAnimData(new TextDecoder().decode(await source(root+'AnimData.xml')));
  const credit=new TextDecoder().decode(await source(root+'credits.txt'));

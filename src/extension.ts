@@ -58,7 +58,7 @@ export async function activate(context:vscode.ExtensionContext) {
  const evidence=sessions.evidence;
  let watcher:ReturnType<typeof startTranscriptWatcher>|undefined;
  let publishTimer:ReturnType<typeof setTimeout>|undefined;
- const snapshot=()=>({type:'snapshot',workspaces:(vscode.workspace.workspaceFolders||[]).map(f=>f.name),autoConnect:autoEnabled(),autoAttach:autoAttachEnabled(),autoState:lease?.state,membership:Object.fromEntries(sessions.membership),scene:context.workspaceState.get<string>('scene','forest'),quiet:context.workspaceState.get<boolean>('quiet',false),sequence:++sequence,agents:store.snapshot(),journal:sessions.journal.snapshot(),links:Object.fromEntries(sessions.links),diagnostics:watcher?.diagnostics,observationEnabled:!!watcher,evidence:Object.fromEntries(evidence),terminalNames:Object.fromEntries(terminalNames),assignments});
+ const snapshot=()=>({type:'snapshot',workspaces:(vscode.workspace.workspaceFolders||[]).map(f=>f.name),autoConnect:autoEnabled(),autoAttach:autoAttachEnabled(),autoState:lease?.state,exclusions:sessions.exclusions(),membership:Object.fromEntries(sessions.membership),scene:context.workspaceState.get<string>('scene','forest'),quiet:context.workspaceState.get<boolean>('quiet',false),sequence:++sequence,agents:store.snapshot(),journal:sessions.journal.snapshot(),links:Object.fromEntries(sessions.links),diagnostics:watcher?.diagnostics,observationEnabled:!!watcher,evidence:Object.fromEntries(evidence),terminalNames:Object.fromEntries(terminalNames),assignments});
  const publish=()=>{if(!publishTimer)publishTimer=setTimeout(()=>{publishTimer=undefined;post(snapshot());},80);};
  const receive=(e:Event,direct:boolean,source:Evidence={source:e.provider==='terminal'?'terminal':'hook'})=>{
   sessions.receive(e,direct,source);reconcile();
@@ -272,5 +272,11 @@ export async function activate(context:vscode.ExtensionContext) {
    desktopBoot??={boot:{...snapshot(),pack,assetBase:'https://assets.pmd.local/',mode:'live',presentation:'desktop'},assetDirectory:directory,mediaDirectory:join(context.extensionPath,'media')};startDesktop();
   }).catch(()=>{});
  }
+ // Contribution visibility alone does not reveal Explorer in a fresh window.
+ // Do not await the reveal during activation: resolving the view can wait on us.
+ if(vscode.workspace.getConfiguration('pmdAgents').get<boolean>('autoShowWidget',true))
+  void vscode.commands.executeCommand('pmdAgents.widget.focus',{preserveFocus:true}).then(undefined,()=>{
+   if(!disposed)indicator.tooltip='PMD Agents: use Show Sidebar Widget to open the guild.';
+  });
  return {snapshot:()=>store.snapshot(),...(context.extensionMode===vscode.ExtensionMode.Test?{registration:receiver.registration,ready:()=>ready,widgetReady:()=>!!widget&&initializedViews.has(widget.webview),desktopState:()=>({bound:desktopBound,error:desktopError,minimized:ownerMinimized}),sessions}: {})};
 }

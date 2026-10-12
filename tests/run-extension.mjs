@@ -27,9 +27,13 @@ await mkdir('artifacts/test-workspace',{recursive:true});
 const codexHome=join(base,'test-codex'),date=new Date(),logs=codexHome+'/sessions/'+date.toISOString().slice(0,10).replaceAll('-','/');
 await mkdir(logs,{recursive:true});
 await writeFile(logs+'/fixture.jsonl',[
- {type:'session_meta',payload:{id:'automatic-test-session',cwd:resolve('artifacts/test-workspace'),cli_version:'0.162.0-alpha.2',source:'vscode'}},
+ {type:'session_meta',payload:{id:'automatic-test-session',cwd:resolve('artifacts/test-workspace'),cli_version:'0.162.0-alpha.17.2',source:'vscode'}},
  {timestamp:date.toISOString(),type:'event_msg',payload:{type:'task_started',turn_id:'fixture-turn'}}
 ].map(r=>JSON.stringify(r)).join('\n')+'\n');
+const claudeHome=join(base,'test-claude');
+const claudeLogs=join(claudeHome,'projects',resolve('artifacts/test-workspace').replace(/[^a-zA-Z0-9-]/g,'-'));
+await mkdir(claudeLogs,{recursive:true});
+await writeFile(join(claudeLogs,'fixture.jsonl'),JSON.stringify({type:'user',sessionId:'automatic-claude-session',cwd:resolve('artifacts/test-workspace'),version:'2.1.296',entrypoint:'claude-vscode',uuid:'claude-fixture-turn',timestamp:date.toISOString(),message:{role:'user',content:'Synthetic integration fixture'}})+'\n');
 const emptyPack=join(base,'empty-pack');if(packaged)await mkdir(emptyPack);
 await writeFile(profile+'/User/settings.json',JSON.stringify({'security.workspace.trust.enabled':false,'terminal.integrated.shellIntegration.enabled':true,'terminal.integrated.defaultProfile.windows':'PowerShell','workbench.startupEditor':'none',...(packaged?{'pmdAgents.assetPath':emptyPack}:{})}));
 await runTests({
@@ -37,6 +41,6 @@ await runTests({
  extensionDevelopmentPath:extensionPath,
  extensionTestsPath:resolve('dist/extension-test.cjs'),
  launchArgs:[resolve('artifacts/test-workspace'),'--user-data-dir',profile,'--extensions-dir',extensions,'--disable-extensions','--skip-welcome','--skip-release-notes','--disable-workspace-trust'],
- extensionTestsEnv:{PMD_AGENTS_REGISTRY:join(base,'test-registry'),CODEX_HOME:codexHome,CLAUDE_CONFIG_DIR:join(base,'test-claude')}
+ extensionTestsEnv:{PMD_AGENTS_REGISTRY:join(base,'test-registry'),CODEX_HOME:codexHome,CLAUDE_CONFIG_DIR:claudeHome}
 });
 if(packaged)console.log('Installed VSIX passed in a fresh profile with an explicitly empty asset pack: '+base);

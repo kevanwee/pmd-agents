@@ -17,7 +17,7 @@ export function metadata(provider:Provider,record:any):Metadata|undefined {
   if(!/^0\.(153|159|162)\./.test(p.cli_version))return;
   return {provider,id:p.id,cwd:p.cwd,version:p.cli_version,client:p.source==='vscode'?'VS Code':p.source==='cli'?'CLI':'Other client'};
  }
- if(provider==='claude'&&typeof record.sessionId==='string'&&typeof record.cwd==='string'&&typeof record.version==='string'&&/^2\.1\.(289|292)$/.test(record.version)&&!record.isSidechain)
+ if(provider==='claude'&&typeof record.sessionId==='string'&&typeof record.cwd==='string'&&typeof record.version==='string'&&/^2\.1\.(77|289|292|295|296)$/.test(record.version)&&!record.isSidechain)
   return {provider,id:record.sessionId,cwd:record.cwd,version:record.version,client:record.entrypoint==='claude-vscode'?'VS Code':'CLI / other'};
 }
 export function inWorkspace(cwd:string,roots:string[]){

@@ -1,4 +1,4 @@
-import {connectionStatus} from '../connectionStatus';
+import {connectionStatus,attachmentReason} from '../connectionStatus';
 import type {Evidence} from '../transcripts';
 import {GuildStore,status,type Agent,type Event} from '../core';
 import {ActivityJournal,journalText,type JournalEntry} from '../journal';
@@ -7,7 +7,7 @@ import {Placement} from '../placement';
 import {Navigator,terrains,segment,canStand} from '../navigation';
 import {frameAt,facing,type Pack,type Species,type Point} from '../world';
 import {PokemonPc} from './pc';
-declare global {interface Window {PMD_BOOT:{presentation?:'full'|'widget'|'desktop';quiet?:boolean;workspaces?:string[];scene?:string;autoConnect?:boolean;autoAttach?:boolean;autoState?:string;membership?:Record<string,string>;pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;outsideWorkspace?:number;unsupported:number;readErrors:number;lastScan:number;historyFolders?:number;historyChecked?:number;historyCapped?:boolean};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
+declare global {interface Window {PMD_BOOT:{presentation?:'full'|'widget'|'desktop';quiet?:boolean;workspaces?:string[];scene?:string;autoConnect?:boolean;autoAttach?:boolean;autoState?:string;exclusions?:string[];membership?:Record<string,string>;pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;outsideWorkspace?:number;unsupported:number;readErrors:number;lastScan:number;historyFolders?:number;historyChecked?:number;historyCapped?:boolean};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
 const host=window.acquireVsCodeApi?.();
 const boot=window.PMD_BOOT;
 const pack=boot.pack;
@@ -18,6 +18,7 @@ const navigation=new Map<string,Navigator>();
 const navigator=()=>{const id=scene()?.id||'meadow';if(!navigation.has(id))navigation.set(id,new Navigator(terrain()));return navigation.get(id)!;};
 let workspaces=boot.workspaces;
 let autoConnect=boot.autoConnect??true,autoAttach=boot.autoAttach??true,autoState=boot.autoState,membership=boot.membership||{};
+let exclusions=boot.exclusions||[];
 let worldTime=0,showPaths=false,zoom=1,pan={x:0,y:0},view={x:0,y:0,scale:1};
 
 let agents=boot.agents||[],assignments=boot.assignments||{},terminalNames=boot.terminalNames||{};
@@ -48,7 +49,7 @@ const details=app.querySelector<HTMLDivElement>('#details')!;
 const empty=app.querySelector<HTMLDivElement>('#empty')!;
 const imageCache=new Map<string,HTMLImageElement>();
 const failedImages=new Set<string>();
-const actors=new Map<string,{p:Point;target:Point;slot:number;direction:number;elapsed:number;rest:number;path:Point[];mode:string;walking:boolean;trip:number}>();
+const actors=new Map<string,{p:Point;target:Point;slot:number;direction:number;elapsed:number;trainingElapsed:number;rest:number;path:Point[];mode:string;walking:boolean;trip:number}>();
 const placement=new Placement();
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 let frame=0,last=0,drawCount=0;
@@ -77,7 +78,7 @@ function ensureActors(){
  for(const a of team){
   const n=placement.slots.get(a.id)!;
   const old=actors.get(a.id),p=terrain().stations[n%6];
-  if(!old||old.slot!==n)actors.set(a.id,{p:{...p},target:{...p},slot:n,direction:old?.direction||0,elapsed:old?.elapsed||0,rest:0,path:[],mode:'',walking:false,trip:n});
+  if(!old||old.slot!==n)actors.set(a.id,{p:{...p},target:{...p},slot:n,direction:old?.direction||0,elapsed:old?.elapsed||0,trainingElapsed:0,rest:0,path:[],mode:'',walking:false,trip:n});
  }
 }
 function focusLabel(a:Agent){return a.provider==='terminal'||links[a.id]?'Focus terminal':'Open '+label(a)+' panel';}
@@ -217,9 +218,9 @@ function render() {
    }
   }
   sidebar.append(node('h3','Available sessions'));
-  sidebar.append(node('p','Choose which unassigned sessions belong to this window. Ambiguous sources still require a choice.','muted'));
+  sidebar.append(node('p','Sessions normally connect automatically. Each card explains what is preventing connection.','muted'));
   if(!candidates.length)sidebar.append(node('p','No unassigned events received yet.','muted'));
-  for(const c of candidates){const card=node('div','','candidate');card.append(node('strong',label(c)+' · '+c.id.slice(-6)),node('p',displayStatus(c)+' · '+new Date(c.lastSeen).toLocaleTimeString()),node('p',sourceLabel(c)+(evidence[c.id]?.project?' · '+evidence[c.id].project:''),'muted'),button('Attach to this window',()=>send({type:'attach',id:c.id})));sidebar.append(card);}
+  for(const c of candidates){const card=node('div','','candidate');card.append(node('strong',label(c)+' · '+c.id.slice(-6)),node('p',displayStatus(c)+' · '+new Date(c.lastSeen).toLocaleTimeString()),node('p',sourceLabel(c)+(evidence[c.id]?.project?' · '+evidence[c.id].project:''),'muted'),node('p',attachmentReason({excluded:exclusions.includes(c.id),autoState,autoAttach,autoConnect,workspace:evidence[c.id]?.workspace,connection:evidence[c.id]?.connection}),'muted'),button('Attach to this window',()=>send({type:'attach',id:c.id})));sidebar.append(card);}
   sidebar.append(button('Choose asset pack',()=>send({type:'assets'})));
  }else{
   sidebar.append(node('div','CREDITS & SOURCES','section-label'),node('h3','A PMD fan project'));
@@ -301,7 +302,10 @@ function draw(delta:number){
   const uncertain=['Status unconfirmed','Observation unavailable','Observation paused'].includes(displayStatus(a)),attention=a.attention!=='none'||uncertain;
   const training=['working','editing','running'].includes(a.activity);
   const home=terrain().stations[actor.slot%6],atHome=Math.hypot(actor.p.x-home.x,actor.p.y-home.y)<=1;
-  const motion=trainingAt(sp,actor.elapsed),active=training&&!attention&&!still&&atHome&&actor.mode==='train';
+  const active=training&&!attention&&!still&&atHome&&actor.mode==='train';
+  if(!active)actor.trainingElapsed=0;
+  const motion=trainingAt(sp,actor.trainingElapsed);
+  if(active)actor.trainingElapsed+=delta;
   const attacking=active&&motion.attacking;
   const walking=!still&&!attention&&actor.walking;
   const action=attacking?motion.action:walking?'Walk':a.activity==='idle'&&!attention&&now-a.lastSeen>30000?'Sleep':'Idle';
@@ -364,7 +368,7 @@ window.addEventListener('message',event=>{
  const m=event.data;
  if(m.type==='hookSetup'){hookSetup=m;hookResult=undefined;tab='connections';render();}
  if(m.type==='hookResult'){hookSetup=undefined;hookResult=m;tab='connections';render();}
- if(m.type==='snapshot'){const motionChanged=(typeof m.quiet==='boolean'&&m.quiet!==quiet)||(m.scene&&m.scene!==sceneId);if(typeof m.quiet==='boolean')quiet=m.quiet;if(m.scene&&m.scene!==sceneId){sceneId=m.scene;actors.clear();pan={x:0,y:0};worldTime=0;}if(motionChanged)restart();workspaces=m.workspaces??workspaces;autoConnect=m.autoConnect??autoConnect;autoAttach=m.autoAttach??autoAttach;autoState=m.autoState;membership=m.membership||{};journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
+ if(m.type==='snapshot'){const motionChanged=(typeof m.quiet==='boolean'&&m.quiet!==quiet)||(m.scene&&m.scene!==sceneId);if(typeof m.quiet==='boolean')quiet=m.quiet;if(m.scene&&m.scene!==sceneId){sceneId=m.scene;actors.clear();pan={x:0,y:0};worldTime=0;}if(motionChanged)restart();workspaces=m.workspaces??workspaces;autoConnect=m.autoConnect??autoConnect;autoAttach=m.autoAttach??autoAttach;autoState=m.autoState;exclusions=m.exclusions||[];membership=m.membership||{};journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
  if(m.type==='visibility'){visible=m.visible;restart();}
  if(m.type==='dex')pc.setDex(m);
  if(m.type==='dexPortraits')pc.portraitsReady(m);
