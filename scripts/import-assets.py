@@ -96,4 +96,4 @@ from import_scenery import import_scenery
 manifest=import_scenery(out,manifest)
 (out/"manifest.json.tmp").write_text(json.dumps(manifest,indent=2)+"\n",encoding="utf-8")
 (out/"manifest.json.tmp").replace(out/"manifest.json")
-print(f"Imported {len(manifest['sprites'])} Pokémon, a Substitute dummy, eleven maps and {len(records)} source receipts into {out}")
+print(f"Imported {len(manifest['sprites'])} Pokémon, a Substitute dummy, {len(manifest['maps'])} maps and {len(records)} source receipts into {out}")

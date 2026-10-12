@@ -283,3 +283,28 @@ streaming, real terminal lifecycle/shell events, native window binding and
 lease-failure recovery in a fresh profile with no inherited artwork. The shared
 22-species local pack was upgraded and validated; artwork remains excluded from
 the VSIX and Git. Native minimize/restore code is unchanged from the 0.5.0 audit.
+
+## 0.6.0: every Friend Area (12 October 2026)
+
+The Friend Area dropdown grows from eleven maps to 73: all 57 Red Rescue Team
+Friend Areas and 16 Explorers of Sky areas. `scripts/rescue_maps.py` decodes any
+Rescue Team ground map from the pinned pret/pmd-red revision: BPA tile animation
+(slots follow the static tiles; slots 0-1 animate at d+1 ticks per frame),
+two-layer maps (layer 0 on top) and the BMA collision layer (per row, a command
+below 0x80 gives cmd+1 open tiles, otherwise cmd-127 solid, XORed with the row
+above). `scripts/sky_scenery.py` decodes pinned pret/pmd-sky maps through
+skytemple-files and its collision layer; without skytemple-files the importer
+skips the Explorers maps and keeps every Rescue Team map.
+
+New maps walk on the largest open native collision region; six Explorers maps
+without collision use authored zones. The original eleven keep their authored
+zones and identical training stations. Terrain is built on first use, zone tests
+check bounding boxes first, maps with many collision rectangles use a per-pixel
+floor mask, and station reachability uses one grid search. Building all 73
+terrains takes about four seconds; the pack limit rises from 11 to 128 maps.
+
+Validation: typecheck; navigation tests (six reachable stations and safe dummies
+on all 73 maps, routes between every pair); the full scenery import into a copy
+of the development pack; browser checks. `receiver.test.ts` hangs on this machine
+on main as well (an installed guild holds the receiver port) and is unrelated.
+

@@ -1,7 +1,7 @@
 import {open,readFile,realpath,stat} from 'node:fs/promises';
 import {resolve,sep} from 'node:path';
 import type {Pack,Animation,Species} from './world';
-import {terrains} from './navigation';
+import {terrainSizes} from './navigation';
 import {pngSize} from './png';
 const PATH=/^[-a-zA-Z0-9_./]+$/;
 async function safePath(root:string,name:unknown){
@@ -38,7 +38,7 @@ export async function loadPack(directory:string):Promise<Pack> {
  const manifestPath=resolve(root,'manifest.json');
  if((await stat(manifestPath)).size>16_000_000)throw Error('Manifest too large');
  const p=JSON.parse(await readFile(manifestPath,'utf8')) as Pack;
- if(p.version!==1||!Array.isArray(p.sprites)||!p.sprites.length||p.sprites.length>1200||!Array.isArray(p.maps)||!p.maps.length||p.maps.length>11)throw Error('Unsupported asset pack');
+ if(p.version!==1||!Array.isArray(p.sprites)||!p.sprites.length||p.sprites.length>1200||!Array.isArray(p.maps)||!p.maps.length||p.maps.length>128)throw Error('Unsupported asset pack');
  const ids=new Set<string>();
  for(const s of [...p.sprites,...(p.dummy?[p.dummy]:[])]) {
   if(typeof s?.id!=='string'||ids.has(s.id))throw Error('Invalid species');ids.add(s.id);
@@ -46,7 +46,7 @@ export async function loadPack(directory:string):Promise<Pack> {
  }
  const maps=new Set<string>();
  for(const map of p.maps){
-  const terrain=terrains[map.id];
+  const terrain=terrainSizes[map.id];
   if(!terrain||maps.has(map.id)||map.width!==terrain.width||(map.height!==terrain.height&&!(map.id==='meadow'&&map.height===335))||typeof map.credit!=='string')throw Error('Unsupported map geometry');
   maps.add(map.id);
   const size=pngSize(await header(root,map.file));if(!size||size.width!==map.width||size.height!==map.height)throw Error('Map geometry mismatch');
