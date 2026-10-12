@@ -16,7 +16,7 @@ public static class WidgetTests {
  static async Task Until(Func<bool> predicate,string message){var end=DateTime.UtcNow.AddSeconds(20);while(!predicate()&&DateTime.UtcNow<end)await Task.Delay(100);Check(predicate(),message);}
  static Dictionary<string,object> Config(string root,string marker){
   var pack=PmdWidget.Json.DeserializeObject(File.ReadAllText(Path.Combine(root,"assets/local/manifest.json")));
-  return new Dictionary<string,object>{{"title","PMD widget test"},{"marker",marker},{"applicationPath",Process.GetCurrentProcess().MainModule.FileName},{"profileDirectory",Path.Combine(root,"artifacts/native-profiles",Guid.NewGuid().ToString())},{"mediaDirectory",Path.Combine(root,"media")},{"assetDirectory",Path.Combine(root,"assets/local")},{"focused",false},{"boot",new {pack=pack,assetBase="https://assets.pmd.local/",mode="live",presentation="desktop",agents=new object[0]}}};
+  return new Dictionary<string,object>{{"size",new Dictionary<string,object>{{"width",460},{"height",440}}},{"bounds",new Dictionary<string,object>{{"left",40},{"top",40},{"width",300},{"height",250}}},{"title","PMD widget test"},{"marker",marker},{"applicationPath",Process.GetCurrentProcess().MainModule.FileName},{"profileDirectory",Path.Combine(root,"artifacts/native-profiles",Guid.NewGuid().ToString())},{"mediaDirectory",Path.Combine(root,"media")},{"assetDirectory",Path.Combine(root,"assets/local")},{"focused",false},{"boot",new {pack=pack,assetBase="https://assets.pmd.local/",mode="live",presentation="desktop",agents=new object[0]}}};
  }
  static Dictionary<string,object> Command(string type){return new Dictionary<string,object>{{"type",type}};}
  [STAThread] public static void Main(string[] args){
@@ -33,6 +33,19 @@ public static class WidgetTests {
    try{
     var policy=new WidgetPolicy();Check(!policy.Visible,"initially hidden");policy.Update(true);Check(policy.Visible,"minimize shows");policy.Dismiss();Check(!policy.Visible,"dismiss hides");policy.Update(true);Check(!policy.Visible,"stays dismissed");policy.Update(false);policy.Update(true);Check(policy.Visible,"new minimize resets dismissal");
     a=new PmdWidget(Config(args[0],markerA),value=>Console.WriteLine(PmdWidget.Json.Serialize(value)),false);
+    // Opening size comes from settings; a remembered (smaller) size is ignored, its position kept.
+    Check(a.Size==new System.Drawing.Size(460,440),"configured opening size: "+a.Size);Check(a.Left==40&&a.Top==40,"remembered position: "+a.Location);
+    Check(PmdWidget.ConfiguredSize(new Dictionary<string,object>())==new System.Drawing.Size(360,310),"default size without settings");
+    Check(PmdWidget.ConfiguredSize(new Dictionary<string,object>{{"width",5000},{"height",10}})==new System.Drawing.Size(1200,200),"size clamps to the window limits");
+    var resize=Command("size");resize["width"]=500;resize["height"]=420;a.Receive(resize);Check(a.Size==new System.Drawing.Size(500,420),"a settings change resizes the open widget");
+    // Icon: the first frame of the front-facing row, trimmed and squared; the window takes it.
+    var sheetPath=Path.Combine(Path.GetTempPath(),"pmd-icon-"+Guid.NewGuid()+".png");
+    using(var sheet=new System.Drawing.Bitmap(80,80)){using(var g=System.Drawing.Graphics.FromImage(sheet)){g.Clear(System.Drawing.Color.Transparent);g.FillRectangle(System.Drawing.Brushes.Red,10,12,10,20);g.FillRectangle(System.Drawing.Brushes.Blue,50,0,30,40);g.FillRectangle(System.Drawing.Brushes.Green,0,40,40,40);}sheet.Save(sheetPath);}
+    var cut=PmdWidget.SpriteIcon(sheetPath,40,40,32);Check(cut!=null&&cut.Width==32&&cut.Height==32,"sprite icon is 32px square");
+    using(var bmp=cut.ToBitmap()){var c=bmp.GetPixel(16,28);Check(c.R>200&&c.B<50&&c.G<50,"icon uses the first front-facing frame only: "+c);}
+    var before=a.Icon;var setIcon=Command("icon");setIcon["path"]=sheetPath;setIcon["frameWidth"]=40;setIcon["frameHeight"]=40;a.Receive(setIcon);Check(!ReferenceEquals(a.Icon,before),"window takes the sprite icon");
+    var missing=Command("icon");missing["path"]=sheetPath+".missing";missing["frameWidth"]=40;missing["frameHeight"]=40;var kept=a.Icon;a.Receive(missing);Check(ReferenceEquals(a.Icon,kept),"a missing sheet keeps the current icon");
+    File.Delete(sheetPath);
     b=new PmdWidget(Config(args[0],markerB),value=>{},false);
     // The test launcher suppresses its console; explicitly display only our fixture windows.
     ShowWindow(ownerA.Handle,4);ownerB.Show();await Task.Delay(500);a.BindCandidate(ownerB.Handle);await Task.Delay(700);Check(!a.Bound,"wrong owner must not bind");

@@ -39,3 +39,4 @@
 
 - 12 October 2026: A fresh window must reveal the widget without running Show Widget, and fresh Codex/Claude sessions should connect without routine attachment clicks. Test natural startup, explain the specific reason for any candidate, and keep supported installed client versions current.
 - 12 October 2026: Training should use each Pokémon's available native combat animations, not only a common Attack/Shoot pair. Preserve per-sheet timing and avoid replaying CopyOf aliases as distinct moves.
+- 12 October 2026: The desktop widget must open at a comfortable size every time (owner's reference: the Explorer widget's size), configurable in settings; remember only its position. Its window icon is Appletun's sprite, fetched into the local pack rather than bundled.

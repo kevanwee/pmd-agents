@@ -84,8 +84,12 @@ VS Code and its guild appears above other apps; restore VS Code and it hides.
 Minimize or close the widget to dismiss it for that minimize cycle. Restore it
 from its tray icon, **Pop out**, or **PMD Agents: Show Desktop Widget**. You can
 also pop it out while VS Code is open. Each window owns a separate companion;
-closing that window closes its companion. Position and size are remembered per
-workspace, and Friend Area/Quiet changes synchronize with the full guild.
+closing that window closes its companion. Its position is remembered per
+workspace; it always opens at **PMD Agents: Desktop Widget Width** × **Height**
+(460 × 440 by default), and changing those settings resizes an open widget.
+Friend Area/Quiet changes synchronize with the full guild. Once your asset pack is
+set up, the window and tray icon are Appletun, fetched from the pinned SpriteCollab
+revision into the pack with a receipt (never bundled).
 
 Automatic window matching requires the PMD status-bar item to be visible once
 after startup. Keep the status bar visible until the item's tooltip says the
@@ -115,7 +119,7 @@ npm run package
 
 In VS Code:
 
-1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.5.2.vsix`.
+1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.5.3.vsix`.
 2. Run **Developer: Reload Window**, then look for **PMD Agents** in Explorer. **Open guild** opens its full controls.
 3. Choose a local artwork pack under **Connections → Choose asset pack**.
 4. Every discovered session spawns a Pokémon as it appears. **Connections → Auto-attach** controls this (and **Workspace auto-connect** the narrower, verified-workspace mode). If another guild window shares the same folders, automatic attachment pauses and you choose the intended session manually.

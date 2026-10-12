@@ -3,7 +3,7 @@
   "type": "module",
   "displayName": "PMD Agents",
   "description": "A local Pokemon Mystery Dungeon guild for your coding agents",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "publisher": "kevanwee",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
@@ -84,6 +84,20 @@
           "type": "boolean",
           "default": true,
           "description": "On Windows x64, keep this window's guild in an always-on-top desktop widget when VS Code is minimized. Minimizing the widget hides it until you show it or minimize VS Code again."
+        },
+        "pmdAgents.desktopWidgetWidth": {
+          "type": "number",
+          "default": 460,
+          "minimum": 240,
+          "maximum": 1200,
+          "description": "Width in pixels of the desktop widget whenever it opens. Its position is remembered per workspace; its size always starts here."
+        },
+        "pmdAgents.desktopWidgetHeight": {
+          "type": "number",
+          "default": 440,
+          "minimum": 200,
+          "maximum": 1000,
+          "description": "Height in pixels of the desktop widget whenever it opens."
         }
       }
     },
