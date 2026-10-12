@@ -1,4 +1,5 @@
 import {DesktopWidget,desktopExecutable} from './desktop';
+import {ensureWidgetIcon,WIDGET_ICON} from './widgetIcon';
 import * as vscode from 'vscode';
 import {randomUUID} from 'node:crypto';
 import {homedir} from 'node:os';
@@ -224,6 +225,8 @@ export async function activate(context:vscode.ExtensionContext) {
   current.onDidChangeViewState(()=>{visibility();publish();});
   await mount(current.webview,'full');
  }
+ /** The size the desktop widget opens at (pmdAgents.desktopWidgetWidth/Height). */
+ function widgetSize(){const c=vscode.workspace.getConfiguration('pmdAgents');return {width:c.get<number>('desktopWidgetWidth',460),height:c.get<number>('desktopWidgetHeight',440)};}
  function startDesktop(){
   if(disposed||desktop||!desktopBoot||process.platform!=='win32'||process.arch!=='x64'||vscode.env.remoteName||!vscode.workspace.getConfiguration('pmdAgents').get('desktopWidget',true))return;
   indicator.accessibilityInformation={label:marker};desktopBound=false;
@@ -243,7 +246,9 @@ export async function activate(context:vscode.ExtensionContext) {
    }
    if(message.type==='quiet'&&typeof message.quiet==='boolean'){await context.workspaceState.update('quiet',message.quiet);publish();}
   });
-  desktop.start({...desktopBoot,marker,applicationPath:process.execPath,bounds:context.workspaceState.get('desktopBounds'),title:'PMD Agents - '+(vscode.workspace.name||'VS Code'),profileDirectory:join(context.globalStorageUri.fsPath,'desktop',randomUUID())});
+  desktop.start({...desktopBoot,marker,applicationPath:process.execPath,bounds:context.workspaceState.get('desktopBounds'),size:widgetSize(),title:'PMD Agents - '+(vscode.workspace.name||'VS Code'),profileDirectory:join(context.globalStorageUri.fsPath,'desktop',randomUUID())});
+  const iconRoot=typeof desktopBoot.assetDirectory==='string'?desktopBoot.assetDirectory:'';
+  if(iconRoot)void ensureWidgetIcon(iconRoot).then(path=>{if(path&&desktop===current)current.send({type:'icon',path,frameWidth:WIDGET_ICON.frameWidth,frameHeight:WIDGET_ICON.frameHeight});}).catch(()=>{/* The generic icon stays. */});
  }
  async function showDesktop(){
   if(process.platform!=='win32'||process.arch!=='x64'||vscode.env.remoteName){void vscode.window.showInformationMessage('The desktop companion is available in local Windows x64 windows. The sidebar widget works here.');return;}
@@ -258,7 +263,7 @@ export async function activate(context:vscode.ExtensionContext) {
  vscode.commands.registerCommand('pmdAgents.showWidget',()=>vscode.commands.executeCommand('pmdAgents.widget.focus')),
  vscode.commands.registerCommand('pmdAgents.desktop',showDesktop),
  vscode.window.onDidChangeWindowState(state=>{if(state.focused&&!desktopBound)desktop?.send({type:'bind'});}),
- vscode.workspace.onDidChangeConfiguration(event=>{if(event.affectsConfiguration('pmdAgents.desktopWidget')){if(vscode.workspace.getConfiguration('pmdAgents').get('desktopWidget',true))startDesktop();else{desktop?.dispose();desktop=undefined;ownerMinimized=false;visibility();}}}),
+ vscode.workspace.onDidChangeConfiguration(event=>{if(event.affectsConfiguration('pmdAgents.desktopWidgetWidth')||event.affectsConfiguration('pmdAgents.desktopWidgetHeight')){desktop?.send({type:'size',...widgetSize()});return;}if(event.affectsConfiguration('pmdAgents.desktopWidget')){if(vscode.workspace.getConfiguration('pmdAgents').get('desktopWidget',true))startDesktop();else{desktop?.dispose();desktop=undefined;ownerMinimized=false;visibility();}}}),
  {dispose(){disposed=true;desktop?.dispose();for(const handler of handlers.values())handler.dispose();handlers.clear();views.clear();}}
  );
  context.subscriptions.push(vscode.commands.registerCommand('pmdAgents.open',open),

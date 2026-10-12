@@ -50,10 +50,10 @@ public sealed class PmdWidget : Form {
  public PmdWidget(Dictionary<string,object> cfg,Action<object> output,bool bindOnStart=true) {
   config=cfg;emit=output;Text=(string)cfg["title"];TopMost=true;ShowInTaskbar=false;
   FormBorderStyle=FormBorderStyle.Sizable;MaximizeBox=false;MinimizeBox=true;
-  MinimumSize=new Size(240,200);Size=new Size(360,310);StartPosition=FormStartPosition.Manual;
+  MinimumSize=new Size(240,200);Size=ConfiguredSize(cfg);StartPosition=FormStartPosition.Manual;
   var screen=Screen.PrimaryScreen.WorkingArea;Location=new Point(screen.Right-Width-20,screen.Bottom-Height-20);
   object saved;if(cfg.TryGetValue("bounds",out saved)&&saved is Dictionary<string,object>){
-   var b=(Dictionary<string,object>)saved;try{var r=new Rectangle(Convert.ToInt32(b["left"]),Convert.ToInt32(b["top"]),Math.Max(240,Math.Min(1200,Convert.ToInt32(b["width"]))),Math.Max(200,Math.Min(1000,Convert.ToInt32(b["height"]))));var area=Screen.FromRectangle(r).WorkingArea;r.Width=Math.Min(r.Width,area.Width);r.Height=Math.Min(r.Height,area.Height);r.X=Math.Max(area.Left,Math.Min(r.X,area.Right-r.Width));r.Y=Math.Max(area.Top,Math.Min(r.Y,area.Bottom-r.Height));Bounds=r;}catch{}}
+   var b=(Dictionary<string,object>)saved;try{var r=new Rectangle(Convert.ToInt32(b["left"]),Convert.ToInt32(b["top"]),Width,Height);var area=Screen.FromRectangle(r).WorkingArea;r.Width=Math.Min(r.Width,area.Width);r.Height=Math.Min(r.Height,area.Height);r.X=Math.Max(area.Left,Math.Min(r.X,area.Right-r.Width));r.Y=Math.Max(area.Top,Math.Min(r.Y,area.Bottom-r.Height));Bounds=r;}catch{}}
   property="PMD.Widget."+(string)cfg["marker"];
   Controls.Add(browser);var handle=Handle;var viewHandle=browser.Handle;
   tray.Text=Text.Length>63?Text.Substring(0,63):Text;
@@ -99,6 +99,38 @@ public sealed class PmdWidget : Form {
   if(type=="message") {var payload=(Dictionary<string,object>)message["message"];if((string)payload["type"]=="snapshot")latest=payload;Message(payload);}
   if(type=="bind")BindForeground();
   if(type=="show"){policy.Show();ApplyVisibility();}
+  if(type=="size"){var size=ConfiguredSize(message);if(WindowState==FormWindowState.Normal){var area=Screen.FromControl(this).WorkingArea;Bounds=new Rectangle(Math.Max(area.Left,Math.Min(Left,area.Right-size.Width)),Math.Max(area.Top,Math.Min(Top,area.Bottom-size.Height)),Math.Min(size.Width,area.Width),Math.Min(size.Height,area.Height));}}
+  if(type=="icon")ApplyIcon(message);
+ }
+ /** The configured opening size (pmdAgents.desktopWidgetWidth/Height), clamped like the window itself. */
+ internal static Size ConfiguredSize(Dictionary<string,object> source){
+  int width=360,height=310;object value;
+  var size=source.TryGetValue("size",out value)?value as Dictionary<string,object>:source;
+  try{if(size!=null&&size.ContainsKey("width"))width=Convert.ToInt32(size["width"]);if(size!=null&&size.ContainsKey("height"))height=Convert.ToInt32(size["height"]);}catch{}
+  return new Size(Math.Max(240,Math.Min(1200,width)),Math.Max(200,Math.Min(1000,height)));
+ }
+ /** Window and tray icon from a local sprite sheet: the first frame of the front-facing row, trimmed, squared, pixel-scaled. */
+ void ApplyIcon(Dictionary<string,object> message){
+  try{
+   var icon=SpriteIcon((string)message["path"],Convert.ToInt32(message["frameWidth"]),Convert.ToInt32(message["frameHeight"]),32);
+   if(icon==null)return;Icon=icon;tray.Icon=icon;
+  }catch{/* The generic icon stays. */}
+ }
+ internal static Icon SpriteIcon(string path,int frameWidth,int frameHeight,int size){
+  using(var sheet=new Bitmap(path)){
+   if(frameWidth<=0||frameHeight<=0||frameWidth>sheet.Width||frameHeight>sheet.Height)return null;
+   int left=frameWidth,top=frameHeight,right=-1,bottom=-1;
+   for(int y=0;y<frameHeight;y++)for(int x=0;x<frameWidth;x++)if(sheet.GetPixel(x,y).A>0){left=Math.Min(left,x);top=Math.Min(top,y);right=Math.Max(right,x);bottom=Math.Max(bottom,y);}
+   if(right<0)return null;
+   int w=right-left+1,h=bottom-top+1,side=Math.Max(w,h);
+   using(var square=new Bitmap(size,size,System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+   using(var g=Graphics.FromImage(square)){
+    g.InterpolationMode=System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;g.PixelOffsetMode=System.Drawing.Drawing2D.PixelOffsetMode.Half;
+    float scale=(float)size/side;int dw=(int)Math.Round(w*scale),dh=(int)Math.Round(h*scale);
+    g.DrawImage(sheet,new Rectangle((size-dw)/2,size-dh,dw,dh),new Rectangle(left,top,w,h),GraphicsUnit.Pixel);
+    return Icon.FromHandle(square.GetHicon());
+   }
+  }
  }
  public void BindForeground(){
   if(Bound||searching||closing)return;
