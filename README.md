@@ -119,7 +119,7 @@ npm run package
 
 In VS Code:
 
-1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.5.3.vsix`.
+1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.6.0.vsix`.
 2. Run **Developer: Reload Window**, then look for **PMD Agents** in Explorer. **Open guild** opens its full controls.
 3. Choose a local artwork pack under **Connections → Choose asset pack**.
 4. Every discovered session spawns a Pokémon as it appears. **Connections → Auto-attach** controls this (and **Workspace auto-connect** the narrower, verified-workspace mode). If another guild window shares the same folders, automatic attachment pauses and you choose the intended session manually.
@@ -128,7 +128,7 @@ The extension can observe sessions without artwork; the scene needs a complete l
 
 ### Import artwork
 
-Source sheets and game maps are **not included in Git or the VSIX**. The importer downloads pinned SpriteCollab sheets, eleven original Red Rescue Team Friend Areas from [pret/pmd-red](https://github.com/pret/pmd-red), and Pixelify Sans. Maps are decoded from native tile and palette data, including original palette frames and durations, with source hashes recorded in the local pack. Python and Pillow are required. To refresh only maps while preserving your imported Pokemon, run `npm run import:scenery -- --output C:/path/to/your/pack`.
+Source sheets and game maps are **not included in Git or the VSIX**. The importer downloads pinned SpriteCollab sheets, all 57 original Red Rescue Team Friend Areas from [pret/pmd-red](https://github.com/pret/pmd-red), 16 Explorers of Sky Friend Areas from [pret/pmd-sky](https://github.com/pret/pmd-sky) when [skytemple-files](https://github.com/SkyTemple/skytemple-files) is installed (Python 3.10–3.13), and Pixelify Sans. Maps are decoded from native tile and palette data, including original palette frames and durations, with source hashes recorded in the local pack. Python and Pillow are required. To refresh only maps while preserving your imported Pokemon, run `npm run import:scenery -- --output C:/path/to/your/pack`.
 
 ```powershell
 python -m pip install Pillow
@@ -161,10 +161,12 @@ Choose the **Friend area** dropdown above the scene:
 - **Transform Forest:** lossless 32-frame evolution stone, six native ticks (100 ms) per frame.
 - **Thunder Meadow, Mt. Moonview, Decrepit Lab, Seafloor Cave, Volcanic Pit, Legendary Island, Healing Forest and Waterfall Lake:** original palette animation, including magma flows, water, lights and shimmer.
 - **Mushroom Forest and Rainbow Peak:** original static scenery; these maps contain no palette or tile animation.
+- **Every other Red Rescue Team Friend Area** (Bountiful Sea to Final Island, 57 in all), with native palette animation and, where the game has it, tile animation (Southern Island's surf, the Crater's vent, the Power Plant's generators).
+- **Explorers of Sky:** Crystal Crossing and 15 more areas such as Guild Crossroads, Temple Steps and Magma Platform, when skytemple-files is installed.
 
-All eleven maps have authored movement zones and six reachable training stations with safe dummy positions. Scenery updates independently of agent activity; Quiet and reduced motion freeze it.
+Every map has six reachable training stations with safe dummy positions. The original eleven keep their authored movement zones; the others walk on the game's own collision layer (largest open region), or on authored zones for the six Explorers maps without one. Each map's floor and routes are built only when it is shown. Scenery updates independently of agent activity; Quiet and reduced motion freeze it.
 
-Pokémon now find routes around obstacles across the clearing, rather than moving 14 pixels either side of a station. Active workers alternate training and exploration; readers scout and recent idle teammates wander before resting. **Walkable area** shows the authored boundaries and routes. These are measured from the artwork, not extracted game collision maps. **Zoom in** supports dragging; **Fit map** restores the whole scene. Quiet and reduced motion stop environment animation as well as Pokémon motion.
+Pokémon now find routes around obstacles across the clearing, rather than moving 14 pixels either side of a station. Active workers alternate training and exploration; readers scout and recent idle teammates wander before resting. **Walkable area** shows the floor boundaries and routes: measured from the artwork on the original eleven maps, and from native collision data on the rest. **Zoom in** supports dragging; **Fit map** restores the whole scene. Quiet and reduced motion stop environment animation as well as Pokémon motion.
 
 ![Thunder Meadow with expanded ground, a tree-shaped obstacle and an exploration route; simulated sessions](docs/screenshots/meadow-routes.png)
 
@@ -268,7 +270,7 @@ See the [0.4.3 code review](docs/REVIEW-2026-10-10.md) for findings and remainin
 - [x] Pokémon storage system: the full National Dex with forms, on-demand validated imports and credits
 - [x] Main-series game view as the primary storage layout, with every box icon, front and shiny sprite and typed move colours
 - [ ] Durable exact-window manual attachment restoration and process reconciliation
-- [ ] Outcome poses (Hurt, Pose), more maps and optional dungeon presentation
+- [ ] Outcome poses (Hurt, Pose) and optional dungeon presentation
 
 The [full plan](docs/PLAN.md) separates delivered work from future proposals. [Research](docs/RESEARCH.md) records the predecessor review and archive receipt.
 

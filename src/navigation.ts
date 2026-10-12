@@ -12,12 +12,33 @@ export const terrains:Record<string,Terrain>={
   obstacles:[points([[219,179],[242,177],[257,190],[263,207],[249,217],[225,216],[209,203],[212,187]])],
   stations:points([[179,225],[276,225],[185,259],[271,259],[207,287],[262,287]])}
 };
+// Bounding boxes let checks skip far zones; native collision floors are many small rectangles.
+const bounds=new WeakMap<Point[],number[]>();
+function box(polygon:Point[]){
+ let b=bounds.get(polygon);
+ if(!b){const xs=polygon.map(p=>p.x),ys=polygon.map(p=>p.y);b=[Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];bounds.set(polygon,b);}
+ return b;
+}
 export function inside(p:Point,polygon:Point[]){
+ const [left,top,right,bottom]=box(polygon);if(p.x<left||p.x>right||p.y<top||p.y>bottom)return false;
  let hit=false;for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){
   const a=polygon[i],b=polygon[j];if((a.y>p.y)!==(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)hit=!hit;
  }return hit;
 }
-export function canStand(p:Point,terrain:Terrain){return [{x:0,y:0},{x:-5,y:0},{x:5,y:0},{x:0,y:4}].every(o=>{const q={x:p.x+o.x,y:p.y+o.y};return (terrain.zones??[terrain.ground]).some(zone=>inside(q,zone))&&!terrain.obstacles.some(poly=>inside(q,poly));});}
+function floor(q:Point,terrain:Terrain){return (terrain.zones??[terrain.ground]).some(zone=>inside(q,zone))&&!terrain.obstacles.some(poly=>inside(q,poly));}
+// Native collision floors have dozens of rectangles on an 8px grid; a per-pixel mask answers in one lookup.
+const masks=new WeakMap<Terrain,Uint8Array>();
+function mask(terrain:Terrain){
+ let m=masks.get(terrain);
+ if(!m){m=new Uint8Array(terrain.width*terrain.height);for(let y=0;y<terrain.height;y++)for(let x=0;x<terrain.width;x++)m[y*terrain.width+x]=floor({x:x+.5,y:y+.5},terrain)?1:0;masks.set(terrain,m);}
+ return m;
+}
+function standable(q:Point,terrain:Terrain){
+ if((terrain.zones?.length??1)<=16)return floor(q,terrain);
+ const x=Math.floor(q.x),y=Math.floor(q.y);
+ return x>=0&&y>=0&&x<terrain.width&&y<terrain.height&&mask(terrain)[y*terrain.width+x]===1;
+}
+export function canStand(p:Point,terrain:Terrain){return [{x:0,y:0},{x:-5,y:0},{x:5,y:0},{x:0,y:4}].every(o=>standable({x:p.x+o.x,y:p.y+o.y},terrain));}
 export function segment(a:Point,b:Point,terrain:Terrain){
  const n=Math.max(1,Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)/2));
  for(let i=0;i<=n;i++)if(!canStand({x:a.x+(b.x-a.x)*i/n,y:a.y+(b.y-a.y)*i/n},terrain))return false;return true;
@@ -43,6 +64,12 @@ export class Navigator {
   for(let i=0;i<path.length;){let far=i;while(far+1<path.length&&segment(current,path[far+1],this.terrain))far++;simple.push(path[far]);current=path[far];i=far+1;}
   return simple;
  }
+ /** Grid cells connected to a cell (by identity), as route() would find them. */
+ reachable(from:Point){
+  const start=this.cells.indexOf(from),seen=new Set<number>(start<0?[]:[start]);
+  for(const i of seen)for(const n of this.edges[i])seen.add(n);
+  return new Set([...seen].map(i=>this.cells[i]));
+ }
  wander(from:Point,seed:number,occupied:Point[]=[]){
   for(let attempt=0;attempt<48;attempt++){
    const p=this.cells[(Math.abs(seed*101+attempt*67))%this.cells.length];if(!p)break;
@@ -52,7 +79,15 @@ export class Navigator {
  }
 }
 
+/** Map sizes for pack validation, without building every map's navigation. */
+export const terrainSizes:Record<string,{width:number;height:number}>={meadow:{width:456,height:336},forest:{width:480,height:312}};
 for(const area of areas){
+ terrainSizes[area.id]={width:area.size[0],height:area.size[1]};
+ // Built on first use: a map's floor, grid and workstations cost nothing until it is shown.
+ let cached:Terrain|undefined;
+ Object.defineProperty(terrains,area.id,{enumerable:true,get:()=>cached??=build(area)});
+}
+function build(area:{size:number[];zones:number[][][];obstacles:number[][][]}):Terrain{
  const zones=area.zones.map(points);
  const terrain:Terrain={width:area.size[0],height:area.size[1],ground:zones[0],zones,obstacles:area.obstacles.map(points),stations:[]};
  // Spread workstations over the same conservative floor used by navigation.
@@ -60,10 +95,12 @@ for(const area of areas){
  const candidates=nav.cells.filter(p=>segment(p,{x:p.x+29,y:p.y},terrain));
  candidates.sort((a,b)=>score(b)-score(a));
  const anchor=candidates[0];
- for(let i=candidates.length-1;i>=0;i--)if(!nav.route(anchor,candidates[i]).length)candidates.splice(i,1);
+ // Keep only stations connected to the anchor: one search over the grid instead of a route per candidate.
+ const reached=nav.reachable(anchor);
+ for(let i=candidates.length-1;i>=0;i--)if(!reached.has(candidates[i])&&!segment(anchor,candidates[i],terrain))candidates.splice(i,1);
  while(terrain.stations.length<6&&candidates.length){
   candidates.sort((a,b)=>score(b)-score(a));terrain.stations.push(candidates.shift()!);
  }
  function score(p:Point){return terrain.stations.length?Math.min(...terrain.stations.map(s=>Math.hypot(p.x-s.x,p.y-s.y))):-Math.hypot(p.x-terrain.width/2,p.y-terrain.height*.65);}
- terrains[area.id]=terrain;
+ return terrain;
 }
