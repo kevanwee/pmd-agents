@@ -244,3 +244,42 @@ the application runtime source is unchanged.
 After the risk discussion, the owner explicitly authorised the GitHub release
 on 12 October 2026. Version 0.5.1 publishes the VSIX and checksum with installation
 instructions and support limits. Publication does not establish artwork clearance.
+
+## 0.5.2: fresh windows, connections and training (12 October 2026)
+
+The previous fresh-profile test explicitly opened the sidebar. Removing that
+action reproduced a startup failure: activation alone did not reveal the widget.
+Startup now reveals the Explorer view with preserved keyboard focus; the default
+`autoShowWidget` setting can be disabled. The integration test waits for natural
+activation and view initialization without calling Activate or Show Widget.
+
+Claude 2.1.77, 2.1.295 and 2.1.296 were rejected by the old version allowlist.
+Their actual record schemas were inspected before adding support. Live no-tool
+turns on installed standalone CLI 2.1.77 and the VS Code bundled 2.1.296 executable
+each produced turn, pulse and finish events with no read errors. Native VS Code
+2.1.295/2.1.296 tool records were replayed, and native Codex
+0.162.0-alpha.17.2 supplied live events. Running the bundled Claude executable is
+CLI evidence, not an end-to-end test of its native chat UI. Live native approval
+and child flows remain unverified.
+
+Hooks gain workspace membership when matching transcript metadata arrives,
+without replacing hook activity with stale replay. Direct hook startup retains
+window membership. Automatic attachment still retries continuously; exclusions,
+overlap and unavailable observation now have specific candidate explanations.
+No folder equality is presented as proof of native-window ownership.
+
+Both importers now include available Strike, QuickStrike, MultiStrike and
+SpAttack alongside Attack/Shoot. Training rotates unique source sheets with
+their native durations, anchors and hit frames. CopyOf aliases share a move.
+After travel or attention the attack restarts at the beginning. Quiet/reduced
+motion still stop training. The local upgrade command preserves the roster and
+maps, validates every sheet and records pinned source receipts. Existing packs
+without optional combat sheets still work.
+
+Validation: 67 source tests, typecheck, browser regressions, compact widget
+checks and native QuickStrike/MultiStrike/SpAttack canvas checks passed. The
+packaged VSIX passed automatic startup, synthetic Codex/Claude attachment and
+streaming, real terminal lifecycle/shell events, native window binding and
+lease-failure recovery in a fresh profile with no inherited artwork. The shared
+22-species local pack was upgraded and validated; artwork remains excluded from
+the VSIX and Git. Native minimize/restore code is unchanged from the 0.5.0 audit.

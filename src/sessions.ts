@@ -16,7 +16,7 @@ export class Sessions {
  autoConnect(eligible:Set<string>){
   for(const a of this.store.agents.values()){
    const source=this.evidence.get(a.id),allowed=!!source?.workspace&&eligible.has(source.workspace)&&!a.ended&&!this.excluded.has(a.id);
-   if(allowed&&source?.connection==='observing'&&!a.attached){this.store.attach(a.id);this.membership.set(a.id,'workspace');}
+   if(allowed&&source?.connection==='observing'&&(!a.attached||this.membership.get(a.id)==='auto')){this.store.attach(a.id);this.membership.set(a.id,'workspace');}
    if(!allowed&&this.membership.get(a.id)==='workspace'){this.store.detach(a.id);this.membership.delete(a.id);this.links.delete(a.id);}
   }
  }
@@ -45,7 +45,7 @@ export class Sessions {
    source={...source,partial:true};
   }
   if(source.source==='hook'&&event.kind==='session'&&previous){
-   if(direct&&!this.excluded.has(event.session))this.attach(event.session);
+   if(direct&&!this.excluded.has(event.session))this.attach(event.session,'window');
    return;
   }
   if(source.source==='hook'&&event.kind!=='session'){
@@ -63,11 +63,11 @@ export class Sessions {
   }
   this.prune();
  }
- attach(id:string){
+ attach(id:string,membership:'manual'|'window'='manual'){
   const a=this.store.agents.get(id);if(!a||a.ended)return;
   this.excluded.delete(id);this.store.attach(id);
-  this.membership.set(id,'manual');
-  for(const child of this.store.agents.values())if(child.parent===id&&!this.excluded.has(child.id)){this.store.attach(child.id);this.membership.set(child.id,'manual');}
+  this.membership.set(id,membership);
+  for(const child of this.store.agents.values())if(child.parent===id&&!child.ended&&!this.excluded.has(child.id)){this.store.attach(child.id);this.membership.set(child.id,membership);}
  }
  detach(id:string){
   if(!this.store.agents.has(id))return;

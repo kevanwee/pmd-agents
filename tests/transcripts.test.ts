@@ -4,7 +4,7 @@ import {mkdtemp,mkdir,writeFile,appendFile,rm,utimes} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {TranscriptParser,JsonlTail,metadata,inWorkspace,startTranscriptWatcher} from '../src/transcripts';
-import {GuildStore} from '../src/core';
+import {GuildStore,type Event} from '../src/core';
 import {CodexDirectoryScan} from '../src/discovery';
 import {WorkspaceLease} from '../src/autoconnect';
 import {Sessions} from '../src/sessions';
@@ -76,8 +76,29 @@ test('discovery is workspace scoped and version gated',()=>{
  assert.ok(metadata('codex',{type:'session_meta',payload:{id:'x',cwd:meta.cwd,cli_version:meta.version}}));
  assert.equal(metadata('codex',{type:'session_meta',payload:{id:'x',cwd:meta.cwd,cli_version:'9.0'}}),undefined);
  assert.equal(metadata('claude',{sessionId:'x',cwd:meta.cwd,version:'2.1.999'}),undefined);
+ for(const version of ['2.1.77','2.1.295','2.1.296']){
+  assert.equal(metadata('claude',{sessionId:'x',cwd:meta.cwd,version,entrypoint:'claude-vscode'})?.version,version);
+  assert.equal(metadata('claude',{sessionId:'x',cwd:meta.cwd,version,isSidechain:true}),undefined);
+ }
  assert.equal(inWorkspace(join(meta.cwd,'src'),[meta.cwd]),true);
  assert.equal(inWorkspace(meta.cwd+'-other',[meta.cwd]),false);
+});
+test('a new Claude 2.1.296 conversation is discovered after startup and streams its turn',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'pmd-new-claude-')),root=join(dir,'project');
+ const claudeHome=join(dir,'claude'),logs=join(claudeHome,'projects',root.replace(/[^a-zA-Z0-9-]/g,'-'));
+ const events:Event[]=[],sessions=new Sessions(),lease=new WorkspaceLease(join(dir,'leases'));
+ const watcher=startTranscriptWatcher([root],(e,source)=>{events.push(e);sessions.receive(e,false,source);sessions.autoConnect(lease.eligible);},{codexHome:join(dir,'codex'),claudeHome,poll:false});
+ const record=(type:string,message:unknown)=>({type,message,sessionId:'fresh-claude',cwd:root,version:'2.1.296',entrypoint:'claude-vscode',uuid:'fresh-turn',timestamp:new Date().toISOString()});
+ try{
+  await lease.refresh([root]);await watcher.rescan();assert.equal(events.length,0);
+  await mkdir(logs,{recursive:true});const file=join(logs,'fresh.jsonl');
+  await writeFile(file,JSON.stringify(record('user',{role:'user',content:'private prompt'}))+'\n');
+  await watcher.rescan();assert.equal(sessions.store.snapshot()[0].attached,true);assert.equal(events.at(-1)?.kind,'turn');
+  await appendFile(file,[record('assistant',{content:[{type:'tool_use',id:'a',name:'Read',input:{path:'private'}}],stop_reason:'tool_use'}),record('user',{role:'user',content:[{type:'tool_result',tool_use_id:'a',content:'private result'}]}),record('assistant',{content:[{type:'text',text:'private answer'}],stop_reason:'end_turn'})].map(r=>JSON.stringify(r)).join('\n')+'\n');
+  await watcher.rescan();assert.equal(sessions.store.snapshot()[0].outcome,'finished');
+  assert.ok(events.some(e=>e.kind==='tool-start'));assert.ok(events.some(e=>e.kind==='tool-end'));
+  assert.ok(!JSON.stringify(events).includes('private'));assert.equal(watcher.diagnostics.readErrors,0);
+ }finally{watcher.dispose();await lease.dispose();await rm(dir,{recursive:true,force:true});}
 });
 test('JSONL reader handles split UTF8, stable byte offsets, malformed lines and truncation',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'pmd-tail-')),file=join(dir,'log.jsonl');

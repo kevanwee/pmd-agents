@@ -36,3 +36,6 @@
 - 11–12 October 2026: Prepare the full GitHub release with first-run setup near the top of README. Original code uses a proprietary licence allowing installation and use while retaining redistribution control. The owner chose to retain the fan version and discuss remaining IP risks before publishing the VSIX. Prepare and validate the candidate; do not represent attribution, free distribution or local asset imports as permission. Keep the legal working report and source audit private and outside Git.
 
 - 12 October 2026: After that risk discussion, the owner explicitly instructed: create the release. Publish the fan version with its existing notices and tested support limits; no additional confirmation is required. This authorisation supersedes the earlier publication hold, not third-party rights.
+
+- 12 October 2026: A fresh window must reveal the widget without running Show Widget, and fresh Codex/Claude sessions should connect without routine attachment clicks. Test natural startup, explain the specific reason for any candidate, and keep supported installed client versions current.
+- 12 October 2026: Training should use each Pokémon's available native combat animations, not only a common Attack/Shoot pair. Preserve per-sheet timing and avoid replaying CopyOf aliases as distinct moves.

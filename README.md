@@ -5,18 +5,18 @@
 PMD Agents is a local VS Code extension inspired by [Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents). Codex chats, Claude Code sessions and terminal jobs appear as Pokémon in selectable PMD Friend Areas: training against Substitute while working, scouting while reading, and stopping when they need your attention.
 
 [![Checks](https://github.com/kevanwee/pmd-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/kevanwee/pmd-agents/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/badge/release-0.5.1-529b72)](https://github.com/kevanwee/pmd-agents/releases/tag/v0.5.1)
+[![Release](https://img.shields.io/badge/release-0.5.2-529b72)](https://github.com/kevanwee/pmd-agents/releases/tag/v0.5.2)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.109%2B-007acc)
 
-> **[Download 0.5.1](https://github.com/kevanwee/pmd-agents/releases/tag/v0.5.1)** for local Windows x64. Game artwork is installed separately. Terminal tracking and live Codex transcript observation are verified locally; live native Claude chat tracking remains unverified. This is an unofficial fan project; publication does not grant third-party artwork or branding rights.
+> **[Download 0.5.2](https://github.com/kevanwee/pmd-agents/releases/tag/v0.5.2)** for local Windows x64. Game artwork is installed separately. Terminal tracking and live Codex transcript observation are verified locally; live native Claude chat tracking remains unverified. This is an unofficial fan project; publication does not grant third-party artwork or branding rights.
 
 ## Start here
 
-The installable package is for **local Windows x64 and VS Code 1.109+**. The desktop widget also needs the [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/). WSL, SSH, containers and other operating systems are not release-tested. Install the extension in every VS Code profile where you want it; new trusted windows in that profile activate it automatically.
+The installable package is for **local Windows x64 and VS Code 1.109+**. The desktop widget also needs the [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/). WSL, SSH, containers and other operating systems are not release-tested. Install the extension in every VS Code profile where you want it; new trusted windows in that profile activate it and reveal the Explorer widget automatically without taking keyboard focus. Set `pmdAgents.autoShowWidget` to `false` if you prefer to keep the sidebar hidden.
 
 Install the release:
 
-1. Download the [0.5.1 VSIX](https://github.com/kevanwee/pmd-agents/releases/download/v0.5.1/pmd-agents-0.5.1.vsix) and [SHA-256 checksum](https://github.com/kevanwee/pmd-agents/releases/download/v0.5.1/pmd-agents-0.5.1.vsix.sha256). Compare the checksum with `Get-FileHash .\pmd-agents-0.5.1.vsix -Algorithm SHA256`.
+1. Download the [0.5.2 VSIX](https://github.com/kevanwee/pmd-agents/releases/download/v0.5.2/pmd-agents-0.5.2.vsix) and [SHA-256 checksum](https://github.com/kevanwee/pmd-agents/releases/download/v0.5.2/pmd-agents-0.5.2.vsix.sha256). Compare the checksum with `Get-FileHash .\pmd-agents-0.5.2.vsix -Algorithm SHA256`.
 2. In VS Code, run **Extensions: Install from VSIX**, select the download, then **Developer: Reload Window**. Node.js, npm and Python are not needed to install or run the VSIX.
 3. Open **PMD Agents** in Explorer, then **Open guild**. Trust only workspaces you trust to run local extensions.
 4. Under **Connections → Choose asset pack**, select a folder containing a compatible `manifest.json` and artwork you are permitted to use. **The VSIX includes no game artwork.** Without a pack, session observation works but the animated scene is unavailable. Existing source import tools need a source checkout, Python and Pillow; see [Import artwork](#import-artwork). They do not establish permission to use the downloaded material.
@@ -36,7 +36,7 @@ The original code uses a [proprietary use licence](LICENSE): installation and pe
 - **Observes your existing workflow.** Keep using native Codex and Claude Code chats and VS Code terminals. PMD Agents is an observer, not a replacement chat client.
 - **Uses authentic PMD animations.** Directional sheets, native frame durations, portraits and shadow anchors; no four-frame sprite assumptions.
 - **Reconnects automatically.** Supported recent workspace chats join without Scan or Add. Overlapping guild windows pause automatic attachment instead of silently claiming the same chat.
-- **Makes activity visible.** Working, editing and command-running sessions practise attacks and ranged moves against Substitute. Attention stops training immediately.
+- **Makes activity visible.** Working, editing and command-running sessions rotate through their available native Attack, Shoot, Strike, QuickStrike, MultiStrike and SpAttack sheets against Substitute, without repeating aliases of the same sheet. Attention stops training immediately.
 - **Keeps session identity stable.** Teammates joining or leaving does not reshuffle existing Pokémon. Extra sessions use additional clearings.
 - **Shows its evidence.** An Activity journal lists observed events, timestamps and sources. Missing evidence becomes uncertainty, never invented success.
 - **Lets you choose the team.** Attach ambiguous sessions, open the Pokémon storage system to pick any drawn species or form in National Dex order, link an agent to its terminal, or remove it from the guild without stopping it.
@@ -66,7 +66,7 @@ Arrow keys move the cursor, Page Up / Page Down change boxes, Enter opens the me
 
 ![The same box in the guild view with PMD portraits; simulated demo](docs/screenshots/storage-guild.png)
 
-The catalog comes from SpriteCollab's own tracker at the pinned revision (1,025 species, about 4,000 drawn forms, about 3,200 with the Idle, Walk, Attack and Sleep sheets the guild needs). The game view's box icons come from the [Smogon / Pokémon Showdown sprite repository](https://github.com/smogon/sprites): one Gen 6/7 menu-sprite style for all 1,025 species (Generation VIII and IX icons are the Smogon community's in that style), drawn at their natural size times two so every Pokémon sits on the same scale, as in the games. Front sprites and shiny fronts come from the [PokeAPI sprites repository](https://github.com/PokeAPI/sprites) on a uniform 96 × 96 canvas, and types from [PokeAPI's CSV data](https://github.com/PokeAPI/pokeapi). All sources are pinned. They are fetched a box at a time as you browse, or all at once with **Fetch all game sprites** (3,075 files) or `npm run import:game`. PMD portraits and chosen sprite sets are fetched into your local pack with the original credit records and SHA-256 receipts, then validated for geometry, anchors and timing before they can be chosen. Nothing fetched is bundled or uploaded. The starter pack still comes from [`assets/roster.json`](assets/roster.json) and the Python importer; both importers measure the same anchors from the same sheets. Substitute is a training prop, not a selectable agent.
+The catalog comes from SpriteCollab's own tracker at the pinned revision (1,025 species, about 4,000 drawn forms, about 3,200 with the Idle, Walk, Attack and Sleep sheets the guild needs). The game view's box icons come from the [Smogon / Pokémon Showdown sprite repository](https://github.com/smogon/sprites): one Gen 6/7 menu-sprite style for all 1,025 species (Generation VIII and IX icons are the Smogon community's in that style), drawn at their natural size times two so every Pokémon sits on the same scale, as in the games. Front sprites and shiny fronts come from the [PokeAPI sprites repository](https://github.com/PokeAPI/sprites) on a uniform 96 × 96 canvas, and types from [PokeAPI's CSV data](https://github.com/PokeAPI/pokeapi). All sources are pinned. They are fetched a box at a time as you browse, or all at once with **Fetch all game sprites** (3,075 files) or `npm run import:game`. PMD portraits and chosen sprite sets are fetched into your local pack with the original credit records and SHA-256 receipts, then validated for geometry, anchors and timing before they can be chosen. Nothing fetched is bundled or uploaded. The starter pack still comes from [`assets/roster.json`](assets/roster.json) and the Python importer; both importers measure the same anchors from the same sheets. Substitute is a training prop, not a selectable agent. Existing packs keep working with Attack alone. To add the expanded combat sheets without replacing your roster or maps, run `npm run import:training -- --output "C:/path/to/your/pack"` from the source checkout, then reload VS Code. New imports include those sheets automatically when available.
 
 Move colours follow the species' primary type for every type, from the pack's own record or PokeAPI's data. Forms without their own portrait borrow the nearest drawn one, which the summary says. The tracker's completion phase decides what counts as *Ready*; the importer still verifies every sheet, so a stale tracker entry fails honestly instead of producing a broken teammate.
 
@@ -115,7 +115,7 @@ npm run package
 
 In VS Code:
 
-1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.5.1.vsix`.
+1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.5.2.vsix`.
 2. Run **Developer: Reload Window**, then look for **PMD Agents** in Explorer. **Open guild** opens its full controls.
 3. Choose a local artwork pack under **Connections → Choose asset pack**.
 4. Every discovered session spawns a Pokémon as it appears. **Connections → Auto-attach** controls this (and **Workspace auto-connect** the narrower, verified-workspace mode). If another guild window shares the same folders, automatic attachment pauses and you choose the intended session manually.
@@ -139,9 +139,9 @@ The storage system needs no Python: the extension builds `dex.json` from the pin
 
 | Source | What works today | Practical limit |
 | --- | --- | --- |
-| Codex native VS Code chat | Live transcript observation verified on 0.162.0-alpha.2; hook adapter available | Workspace auto-connect; native hook/approval coverage still needs validation |
-| Claude native VS Code chat | Actual 2.1.289 records replayed; 2.1.292 schema inspected | A live native chat remains unverified |
-| Claude CLI | Real startup hook received; lifecycle adapter implemented | Full live-turn coverage remains unverified |
+| Codex native VS Code chat | Live transcript observation verified on 0.162.0-alpha.17.2; hook adapter available | Workspace auto-connect; native hook/approval coverage still needs validation |
+| Claude native VS Code chat | Actual 2.1.295/2.1.296 records replayed; synthetic automatic attachment verified | A live native chat remains unverified |
+| Claude CLI | Live turn start, activity and finish verified on standalone 2.1.77 and bundled 2.1.296 | Native chat UI, live approvals and child-agent lifecycle remain unverified |
 | VS Code terminal | Open/close, shell command start/end and exit result verified | Without shell integration: terminal presence only |
 | Other agent CLIs | Generic terminal activity | Internal reasoning, tools and children require an adapter |
 | WSL, SSH, containers | Observer runs in the workspace extension host | Not tested; local Windows logs are not remote-host logs |
@@ -168,7 +168,7 @@ Pokémon now find routes around obstacles across the clearing, rather than movin
 
 Automatic discovery runs in the background; the Scan button is only a manual refresh. Supported files modified within 12 hours qualify. Older Codex creation-date folders are checked in batches, so resumed historical threads may take several scans to appear.
 
-**Auto-attach** (default on) spawns a Pokémon for every discovered live session, including hook events that arrive without a window token. It is a convenience, not proof of which window owns a chat, and it pauses while another guild window shares these folders. Turning it off releases only the sessions it attached; window-bound, workspace and manual membership stay. **Workspace auto** intentionally includes local chats matching this workspace. It does not prove which native editor window or external terminal owns each chat. A local heartbeat registry, containing hashed folder identities, detects overlapping guild windows and pauses automatic attachment for those folders. Explicitly window-bound terminals/hooks still connect directly; unscoped hook events remain candidates. You can switch automatic attachment off or remove individual sessions, which stay excluded after reload.
+**Auto-attach** (default on) spawns a Pokémon for every discovered live session, including hook events that arrive without a window token. It is a convenience, not proof of which window owns a chat, and it pauses while another guild window shares these folders. Turning it off releases only the sessions it attached; window-bound, workspace and manual membership stay. **Workspace auto** intentionally includes local chats matching this workspace. It does not prove which native editor window or external terminal owns each chat. A local heartbeat registry, containing hashed folder identities, detects overlapping guild windows and pauses automatic attachment for those folders. Explicitly window-bound terminals/hooks still connect directly; unscoped hook events reconnect when the overlap clears. Candidate cards explain exclusions, observation failures, disabled automatic connection or window ambiguity. You can switch automatic attachment off or remove individual sessions, which stay excluded after reload.
 
 In **Activity**, use the source picker to switch between Codex, Claude and terminal journals. A terminal’s shell events are separate from a native chat’s events. Newly discovered chats become the default selection unless you have already chosen a teammate.
 

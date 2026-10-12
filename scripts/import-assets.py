@@ -45,7 +45,7 @@ for item in roster+[{"name":"Substitute","number":"0000/0001","element":"normal"
     nodes={n.findtext("Name"):n for n in xml.findall("./Anims/Anim")}
     credit=get(root+"credits.txt").decode()
     entry={"id":species.lower(),"name":species,"dex":int(number.split('/')[0]),"element":item["element"],"source":RAW+root,"artists":artists(credit),"creditRecord":credit,"animations":{}}
-    actions=["Idle","Hurt"] if is_dummy else ["Idle","Walk","Attack","Sleep"]+(["Shoot"] if "Shoot" in nodes else [])
+    actions=["Idle","Hurt"] if is_dummy else ["Idle","Walk","Attack","Sleep"]+[a for a in ["Shoot","Strike","QuickStrike","MultiStrike","SpAttack"] if a in nodes]
     for action in actions:
         key=action; visited=set()
         while nodes[key].findtext("CopyOf"):

@@ -54,3 +54,13 @@ test('auto-attach spawns discovered sessions by default, releases only its own a
  s.mark('codex:manual','unavailable');s.receive(e('codex:lost','turn'),false,{source:'transcript'});s.mark('codex:lost','unavailable');s.autoAttach(true);
  assert.equal(s.store.agents.get('codex:lost')!.attached,false,'a source that is not observing is not spawned');
 });
+test('workspace evidence upgrades an auto-attached hook; a direct startup binds it to its window',()=>{
+ const s=new Sessions(),now=Date.now();
+ s.receive(e('claude:a','turn',{at:now}),false,{source:'hook'},now);s.autoAttach(true);
+ assert.equal(s.membership.get('claude:a'),'auto');
+ s.receive(e('claude:a','turn',{at:now-1}),false,{source:'transcript',workspace:'eligible'},now);
+ s.autoConnect(new Set(['eligible']));s.autoAttach(false);
+ assert.equal(s.store.agents.get('claude:a')!.attached,true);assert.equal(s.membership.get('claude:a'),'workspace');
+ s.receive(e('claude:a','session'),true,{source:'hook'});s.autoConnect(new Set());
+ assert.equal(s.store.agents.get('claude:a')!.attached,true);assert.equal(s.membership.get('claude:a'),'window');
+});

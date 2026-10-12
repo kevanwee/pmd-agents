@@ -13,7 +13,8 @@ private IP review notes out of Git.
   explicitly authorised publication of the fan version on 12 October 2026 after
   the risk discussion; that instruction is not third-party permission.
 - Confirm the target platforms and live-provider claims against dated evidence.
-  Do not describe live Claude, remote hosts or non-Windows support as verified.
+  Distinguish live Claude CLI evidence from native-chat UI coverage; remote hosts
+  and non-Windows support remain unverified.
 - Update `package.json`, `package-lock.json`, README and the release notes together.
 - Review the complete PR diff and run source checks. Merge the reviewed PR, then
   build the exact clean main commit to be tagged.
@@ -31,6 +32,7 @@ npm test
 npm run package
 npx playwright install chromium
 npm run test:browser
+npm run test:training
 npm run test:widget
 npm run test:extension
 npm run test:native
@@ -58,7 +60,7 @@ not an announcement or a completed release. Use the exact reviewed commit:
 
 ```powershell
 $releaseCommit = git rev-parse HEAD
-gh release create v0.5.1 artifacts/pmd-agents-0.5.1.vsix artifacts/pmd-agents-0.5.1.vsix.sha256 --repo kevanwee/pmd-agents --target $releaseCommit --title 'PMD Agents 0.5.1' --notes-file docs/releases/0.5.1.md --draft
+gh release create v0.5.2 artifacts/pmd-agents-0.5.2.vsix artifacts/pmd-agents-0.5.2.vsix.sha256 --repo kevanwee/pmd-agents --target $releaseCommit --title 'PMD Agents 0.5.2' --notes-file docs/releases/0.5.2.md --draft
 ```
 
 Inspect the draft's commit, notes, files and checksums. When publication is

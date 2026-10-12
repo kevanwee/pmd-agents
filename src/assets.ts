@@ -23,7 +23,7 @@ export async function validateSpecies(root:string,s:Species,dummy=false){
  if(s.form!==undefined&&(typeof s.form!=='object'||!/^[0-9]{4}(\/[0-9]{4}){0,4}$/.test(s.form.path)||typeof s.form.label!=='string'||s.form.label.length>60))throw Error('Invalid form');
  if(!dummy){const p=await header(root,s.portrait);if(!pngSize(p))throw Error('Invalid portrait');}
  const required=dummy?['Idle','Hurt']:['Idle','Walk','Attack','Sleep'];
- for(const action of [...required,...(s.animations?.Shoot?['Shoot']:[])]) {
+ for(const action of new Set([...required,...Object.keys(s.animations||{})])) {
   const a:Animation=s.animations?.[action];
   if(!a||![a.w,a.h].every(x=>Number.isInteger(x)&&x>0&&x<=256)||![1,8].includes(a.rows)||!Array.isArray(a.durations)||!a.durations.length||a.durations.length>128||!a.durations.every(d=>Number.isInteger(d)&&d>0&&d<=600))throw Error('Invalid animation');
   if(!Array.isArray(a.anchors)||a.anchors.length!==a.rows||!a.anchors.every(row=>Array.isArray(row)&&row.length===a.durations.length&&row.every(v=>point(v,a.w,a.h))))throw Error('Invalid anchors');
