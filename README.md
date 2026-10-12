@@ -231,6 +231,8 @@ flowchart TD
 
 Hooks take priority over transcript replay. After hook silence, a newer live transcript event can recover observation; time alone never produces success. Tool activity is tracked concurrently, with duplicate and late-event protection. A linked terminal closing does not automatically end its provider session.
 
+[ARCHITECTURE.md](ARCHITECTURE.md) maps the modules, views, artwork pack and tests.
+
 ## Development and verification
 
 ```powershell
@@ -252,7 +254,7 @@ npm run package
 
 The repository is public. Earlier private-repository Actions jobs were blocked by an account billing/spending restriction; current workflow status is shown by the Checks badge. No billing settings were changed.
 
-The local build has **63 passing focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
+The local build has **68 focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
 
 See the [0.4.3 code review](docs/REVIEW-2026-10-10.md) for findings and remaining reliability work.
 
