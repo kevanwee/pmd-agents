@@ -308,3 +308,23 @@ on all 73 maps, routes between every pair); the full scenery import into a copy
 of the development pack; browser checks. `receiver.test.ts` hangs on this machine
 on main as well (an installed guild holds the receiver port) and is unrelated.
 
+## 0.7.0: favorites and varied spawns (13 October 2026)
+
+New teammates were always Eevee or Riolu: without a stored choice, the view hashed
+the session id into the pack's first three species. The host now assigns a Pokémon
+once, when a session first appears in the guild (`src/favorites.ts`). It reviews
+the species already on active teammates, then picks the first favorite in the pack
+that nobody is using, then a random unused species, and only reuses one when every
+species is taken. Choices persist in workspace state as before; a choice whose
+sheets left the pack is replaced.
+
+Favorites are an ordered `pmdAgents.favorites` setting of Pokédex form ids. The
+storage system adds them from any species' menu or form list and orders them in a
+**Favorites** tab beside Guild team. Favorites missing from the pack import in the
+background through the existing pinned, receipt-recording importer.
+
+Validation: five favorites unit tests (order, skipping missing and taken species,
+randomness past the pool, stability, sanitising); the VS Code integration test
+spawned Squirtle and Charmander from favorites (skipping Pikachu, not in the pack)
+and then a random unused Charmeleon; browser checks add, list and order favorites.
+

@@ -53,6 +53,7 @@ flowchart LR
 | `provider.ts`, `core.ts`, `sessions.ts` | Normalising provider records into events; the session model, attention and ordering rules |
 | `autoconnect.ts` | Workspace-scoped automatic attachment with a lease, paused when guild windows overlap |
 | `journal.ts` | A bounded activity journal of tool and status lines, with no raw chat text |
+| `favorites.ts` | Spawning: a new teammate gets the first favorite no active teammate is using, then a random unused species; favorites come from the `pmdAgents.favorites` setting |
 | `storage.ts` | Atomic writes and file locks for state shared between windows |
 | `desktop.ts`, `native/PmdWidget.cs` | The Windows desktop companion window |
 
@@ -71,7 +72,7 @@ candidate until you attach it. Directory equality is never treated as proof of w
 | `app.ts` | The canvas world: map, scenery layers, teammates, Substitute training, scouting and wandering, journal and controls |
 | `navigation.ts` | Floor zones, an 8 px navigation grid with checked edges, routes and six reachable work stations per map. Terrain is built on first use |
 | `placement.ts`, `training.ts` | Stable roster order and arrivals; native attack moves with their own timing and hit frames |
-| `pc.ts` | The Pokémon storage system: boxes, forms and choices |
+| `pc.ts` | The Pokémon storage system: boxes, forms, choices and the ordered Favorites list |
 
 Animation is independent of session status. Quiet mode, reduced motion and hidden views stop
 both scenery and Pokémon motion.

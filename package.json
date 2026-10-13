@@ -3,7 +3,7 @@
   "type": "module",
   "displayName": "PMD Agents",
   "description": "A local Pokemon Mystery Dungeon guild for your coding agents",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "publisher": "kevanwee",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
@@ -74,6 +74,12 @@
           "type": "boolean",
           "default": true,
           "description": "Spawn a Pokémon for every discovered session as it appears, including hook events without a window token. This does not prove which window owns a chat. It pauses while another PMD Agents window has overlapping folders. Removed sessions stay excluded."
+        },
+        "pmdAgents.favorites": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[a-z0-9-]{1,48}$"},
+          "default": [],
+          "markdownDescription": "Favourite Pokémon, highest priority first, as Pokédex form ids (for example `appletun` or `pawmot-shiny`). A new teammate gets the first favourite no active teammate is using, then a random unused species. Edit them in the Pokémon storage system's **Favorites** tab; missing ones import automatically."
         },
         "pmdAgents.autoShowWidget": {
           "type": "boolean",

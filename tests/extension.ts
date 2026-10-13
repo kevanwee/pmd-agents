@@ -33,6 +33,16 @@ export async function run(){
   assert.ok(automatic,'Local chat did not automatically connect');assert.equal(api.sessions.membership.get(automatic.id),'workspace');
   const claude=api.snapshot().find((a:any)=>a.provider==='claude'&&a.attached);
   assert.ok(claude,'Claude 2.1.296 chat did not automatically connect');assert.equal(api.sessions.membership.get(claude.id),'workspace');
+  // Each new teammate gets a Pokémon from favourites first (Pikachu is not in the pack, so it is skipped), never a shared one.
+  if(api.assignments){
+   const team=()=>api.snapshot().filter((a:any)=>a.attached&&!a.ended).map((a:any)=>api.assignments()[a.id]);
+   const spawnDeadline=Date.now()+8000;while(team().some((s:any)=>!s)&&Date.now()<spawnDeadline)await new Promise(r=>setTimeout(r,100));
+   const species=team();console.log('Spawned: '+species.join(', '));
+   if(species.length&&species.every(Boolean)){
+    assert.equal(new Set(species).size,species.length,'Teammates share a Pokémon: '+species.join(', '));
+    assert.ok(species.includes('squirtle')&&(species.length<2||species.includes('charmander')),'Favourites spawn first: '+species.join(', '));
+   }
+  }
   const cwd=vscode.workspace.workspaceFolders![0].uri.fsPath;
   const claudeFile=join(process.env.CLAUDE_CONFIG_DIR!,'projects',cwd.replace(/[^a-zA-Z0-9-]/g,'-'),'fixture.jsonl');
   await appendFile(claudeFile,JSON.stringify({type:'assistant',sessionId:'automatic-claude-session',cwd,version:'2.1.296',timestamp:new Date().toISOString(),message:{content:[{type:'text',text:'Synthetic fixture complete'}],stop_reason:'end_turn'}})+'\n');
