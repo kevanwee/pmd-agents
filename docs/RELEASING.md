@@ -60,7 +60,7 @@ not an announcement or a completed release. Use the exact reviewed commit:
 
 ```powershell
 $releaseCommit = git rev-parse HEAD
-gh release create v0.7.0 artifacts/pmd-agents-0.7.0.vsix artifacts/pmd-agents-0.7.0.vsix.sha256 --repo kevanwee/pmd-agents --target $releaseCommit --title 'PMD Agents 0.7.0' --notes-file docs/releases/0.7.0.md --draft
+gh release create v0.7.1 artifacts/pmd-agents-0.7.1.vsix artifacts/pmd-agents-0.7.1.vsix.sha256 --repo kevanwee/pmd-agents --target $releaseCommit --title 'PMD Agents 0.7.1' --notes-file docs/releases/0.7.1.md --draft
 ```
 
 Inspect the draft's commit, notes, files and checksums. When publication is
