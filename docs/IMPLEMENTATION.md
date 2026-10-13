@@ -328,3 +328,15 @@ randomness past the pool, stability, sanitising); the VS Code integration test
 spawned Squirtle and Charmander from favorites (skipping Pikachu, not in the pack)
 and then a random unused Charmeleon; browser checks add, list and order favorites.
 
+## 0.7.1: favorites panel (13 October 2026)
+
+The Favorites tab became a scrolling list with cut-off controls and mixed sprite
+heights. It is now a grid of tiles in priority order: one icon set drawn at one
+height, numbered, fitting 35 favorites without scrolling. Tiles reorder by drag
+or Alt+arrow keys; clicking a tile opens its ready forms and Remove. Clicking
+anywhere outside an open Pokémon menu or the favorite editor closes it.
+
+Validation: browser checks for the tile title, form editor and click-outside;
+a real-Pokédex rendering of 35 favorites measured no grid overflow and a single
+30px icon height; drag from #3 to #1 sent the reordered list to the host.
+

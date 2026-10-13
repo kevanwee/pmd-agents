@@ -16,7 +16,7 @@ type AssetState=string|'pending'|'failed';
 export class PokemonPc {
  private root:HTMLElement;private body:HTMLElement;private title:HTMLElement;private search:HTMLInputElement;private viewButton:HTMLButtonElement;
  private dex?:Dex;private error?:string;private requested=false;
- private view:'game'|'guild'='game';private box=0;private cursor=0;private menu:'none'|'main'|'forms'|'summary'='none';private party=false;private favs=false;private shiny=false;
+ private view:'game'|'guild'='game';private box=0;private cursor=0;private menu:'none'|'main'|'forms'|'summary'='none';private party=false;private favs=false;private favEdit?:string;private dragFrom?:number;private shiny=false;
  private portraits=new Map<string,AssetState>();private game=new Map<string,AssetState>();private types?:Record<string,string[]>;private typesRequested=false;
  private importing?:string;private importTarget?:{id:string;label:string};private note='';private opener?:HTMLElement;private progress?:{done:number;total:number;failed?:number;complete?:boolean};
  constructor(parent:HTMLElement,private host:PcHost){
@@ -34,11 +34,17 @@ export class PokemonPc {
   const foot=el('footer','pc-foot','Box icons come from Smogon\'s sprite repository and front sprites and types from PokeAPI\'s, all pinned; PMD portraits and chosen sheets from PMD SpriteCollab\'s pinned revision. Everything lands in your local pack with receipts. Nothing is bundled or uploaded.');
   frame.append(head,this.body,foot);this.root.append(frame);parent.append(this.root);
   this.root.addEventListener('keydown',e=>this.key(e));
-  this.root.addEventListener('click',e=>{if(e.target===this.root)this.close();});
+  this.root.addEventListener('click',e=>{
+   if(e.target===this.root){this.close();return;}
+   // Clicking anywhere outside an open menu or the favorite editor closes it, like B in the games.
+   const target=e.target as HTMLElement;
+   if(this.menu!=='none'&&!target.closest('.pc-menu,.gs-popup,.pc-slot,.pc-panel')){this.menu='none';this.shiny=false;this.render();}
+   else if(this.favEdit&&!target.closest('.gs-favtile,.gs-favedit')){this.favEdit=undefined;this.render();}
+  });
  }
  isOpen(){return !this.root.hidden;}
  open(from?:HTMLElement){
-  this.opener=from;this.root.hidden=false;this.note='';this.party=false;this.favs=false;this.shiny=false;
+  this.opener=from;this.root.hidden=false;this.note='';this.party=false;this.favs=false;this.favEdit=undefined;this.shiny=false;
   if(!this.dex&&!this.requested){this.requested=true;this.host.send({type:'dex'});}
   if(!this.types&&!this.typesRequested){this.typesRequested=true;this.host.send({type:'gameTypes'});}
   const current=this.host.session()?.species,pack=this.host.pack();
@@ -216,22 +222,50 @@ export class PokemonPc {
   this.requestGame(page.species.map(s=>s.dex));
   const summary=el('aside','gs-summary');summary.setAttribute('aria-label',this.party?'Guild team':this.favs?'Favorites':'Selected Pokémon');
   if(this.favs){
-   summary.append(el('h3','gs-party-title','Favorites'),el('p','muted','New teammates spawn as the first favorite nobody is using, top to bottom; past the list they spawn at random. Add from any Pokémon’s menu.'));
-   const ids=this.host.favorites();if(!ids.length)summary.append(el('p','muted','No favorites yet.'));
-   const list=el('ol','gs-favs');
+   summary.dataset.favs='';
+   summary.append(el('h3','gs-party-title','Favorites'),el('p','muted','Spawn order for new teammates; then random. Drag to reorder, click for forms.'));
+   const ids=this.host.favorites();if(!ids.length)summary.append(el('p','muted','No favorites yet. Add one from any Pokémon’s menu.'));
+   const grid=el('div','gs-favgrid');grid.setAttribute('role','list');grid.setAttribute('aria-label','Favorites, highest priority first');
+   const move=(from:number,to:number)=>{
+    if(from===to||to<0||to>=ids.length)return;const next=[...ids],[id]=next.splice(from,1);next.splice(to,0,id);
+    this.setFavorites(next,this.favoriteName(id).name+' is now favorite #'+(to+1)+'.');
+    this.body.querySelector<HTMLElement>('.gs-favtile[data-fav="'+CSS.escape(id)+'"]')?.focus({preventScroll:true});
+   };
    ids.forEach((id,i)=>{
     const {species,name}=this.favoriteName(id),inPack=!!this.host.pack()?.sprites.some(s=>s.id===id);
-    const li=el('li','gs-fav');li.dataset.fav=id;
-    const icon=species?this.asset('icon',species.dex):undefined;if(icon)li.append(image(this.host.assetBase+icon,'','gs-party-icon'));else li.append(el('span','gs-party-icon'));
-    li.append(el('span','gs-party-text',(i+1)+'. '+name+(inPack?'':' · importing')));
-    const act=(text:string,label:string,fn:()=>void,disabled=false)=>{const b=document.createElement('button');b.className='gs-fav-act';b.textContent=text;b.setAttribute('aria-label',label);b.dataset.key='fav:'+id+':'+text;b.disabled=disabled;b.onclick=fn;li.append(b);};
-    const swap=(j:number)=>{const next=[...ids];[next[i],next[j]]=[next[j],next[i]];this.setFavorites(next,name+' is now favorite #'+(j+1)+'.');};
-    act('▲','Move '+name+' up',()=>swap(i-1),i===0);act('▼','Move '+name+' down',()=>swap(i+1),i===ids.length-1);
-    act('✕','Remove '+name+' from favorites',()=>this.setFavorites(ids.filter(x=>x!==id),name+' left your favorites.'));
+    const tile=document.createElement('button');tile.className='gs-favtile';tile.dataset.fav=id;tile.dataset.key='fav:'+id;tile.draggable=true;
+    tile.setAttribute('role','listitem');tile.setAttribute('aria-pressed',String(this.favEdit===id));
+    tile.setAttribute('aria-label',(i+1)+'. '+name+(inPack?'':' (importing)')+'. Click for forms; drag or Alt+arrow keys to reorder.');tile.title=(i+1)+'. '+name;
+    // One icon set at one height: the menu icon when fetched, otherwise the front sprite drawn to the same height.
+    const icon=species?this.asset('icon',species.dex):undefined,front=!icon&&species?this.asset('front',species.dex):undefined;
+    if(icon||front)tile.append(image(this.host.assetBase+(icon||front),'',icon?'gs-favicon':'gs-favicon gs-favicon-front'));else tile.append(el('span','gs-favicon gs-favicon-missing',name.slice(0,3).toUpperCase()));
+    tile.append(el('span','gs-favno',String(i+1)));if(!inPack)tile.classList.add('importing');
+    tile.onclick=()=>{this.favEdit=this.favEdit===id?undefined:id;this.note='';this.render();};
+    tile.onkeydown=e=>{if(e.altKey&&(e.key==='ArrowLeft'||e.key==='ArrowUp')){e.preventDefault();e.stopPropagation();move(i,i-1);}else if(e.altKey&&(e.key==='ArrowRight'||e.key==='ArrowDown')){e.preventDefault();e.stopPropagation();move(i,i+1);}};
+    tile.ondragstart=e=>{this.dragFrom=i;e.dataTransfer?.setData('text/plain',id);if(e.dataTransfer)e.dataTransfer.effectAllowed='move';tile.classList.add('dragging');};
+    tile.ondragend=()=>{this.dragFrom=undefined;tile.classList.remove('dragging');};
+    tile.ondragover=e=>{if(this.dragFrom===undefined)return;e.preventDefault();tile.classList.add('drop');};
+    tile.ondragleave=()=>tile.classList.remove('drop');
+    tile.ondrop=e=>{e.preventDefault();const from=this.dragFrom;this.dragFrom=undefined;if(from!==undefined)move(from,i);};
     if(species)this.requestGame([species.dex]);
-    list.append(li);
+    grid.append(tile);
    });
-   summary.append(list);
+   summary.append(grid);
+   const editing=this.favEdit&&ids.includes(this.favEdit)?this.favoriteName(this.favEdit):undefined;
+   if(editing?.species){
+    const index=ids.indexOf(this.favEdit!),panel=el('div','gs-favedit');panel.setAttribute('aria-label',editing.name+' forms');
+    panel.append(el('strong','',(index+1)+'. '+editing.species.name));
+    for(const form of editing.species.forms){
+     const inPack=!!this.host.pack()?.sprites.some(s=>s.id===form.id);if(!form.ready&&!inPack)continue;
+     const b=document.createElement('button');b.textContent=form.label;b.dataset.key='favform:'+form.id;b.setAttribute('aria-pressed',String(form.id===this.favEdit));
+     b.onclick=()=>{if(form.id===this.favEdit)return;const next=ids.filter(x=>x!==form.id);next.splice(next.indexOf(this.favEdit!),1,form.id);this.favEdit=form.id;
+      this.setFavorites(next,editing.species!.name+' favorite is now '+form.label+'.');};
+     panel.append(b);
+    }
+    const remove=document.createElement('button');remove.className='gs-favremove';remove.textContent='Remove';remove.dataset.key='favremove';
+    remove.onclick=()=>{const id=this.favEdit!;this.favEdit=undefined;this.setFavorites(ids.filter(x=>x!==id),editing.name+' left your favorites.');};
+    panel.append(remove);summary.append(panel);
+   }
   }else if(this.party){
    // The team panel takes the summary's place so the box stays browsable while the whole team is dressed.
    summary.append(el('h3','gs-party-title','Guild team'),el('p','muted','Pick the teammate you are dressing, then choose from the box.'));

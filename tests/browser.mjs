@@ -89,8 +89,10 @@ await page.screenshot({path:'artifacts/guild-pc.png'});
 await page.keyboard.press('Escape');await page.keyboard.press('Escape');
 if(await page.getByRole('button',{name:'Switch to the game view with main-series sprites'}).count())await page.getByRole('button',{name:'Switch to the game view with main-series sprites'}).click();
 await page.getByRole('button',{name:'Favorites',exact:true}).click();
-assert.match(await page.locator('.gs-fav').first().textContent(),/1\. Pikachu/);
-assert.ok(await page.getByRole('button',{name:'Move Pikachu up'}).isDisabled());
+assert.equal(await page.locator('.gs-favtile').first().getAttribute('title'),'1. Pikachu');
+// A favorite's forms open from its tile; clicking outside closes them. Alt+arrow keys reorder.
+await page.locator('.gs-favtile').first().click();assert.ok(await page.locator('.gs-favedit').getByRole('button',{name:'Shiny',exact:true}).isVisible());
+await page.locator('.gs-box-head').click();assert.equal(await page.locator('.gs-favedit').count(),0);
 await page.getByRole('button',{name:'Favorites',exact:true}).click();
 if(await page.getByRole('button',{name:'Switch to the guild view with PMD portraits'}).count())await page.getByRole('button',{name:'Switch to the guild view with PMD portraits'}).click();
 const imported={...manifest.sprites.find(s=>s.id==='eevee'),id:'pikachu-shiny',name:'Pikachu (Shiny)',dex:25,form:{path:'0025/0000/0001',label:'Shiny'}};
