@@ -5,10 +5,10 @@
 PMD Agents is a local VS Code extension inspired by [Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents). Codex chats, Claude Code sessions and terminal jobs appear as Pokémon in selectable PMD Friend Areas: training against Substitute while working, scouting while reading, and stopping when they need your attention.
 
 [![Checks](https://github.com/kevanwee/pmd-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/kevanwee/pmd-agents/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/badge/release-0.5.2-529b72)](https://github.com/kevanwee/pmd-agents/releases/tag/v0.5.2)
+[![Release](https://img.shields.io/badge/release-0.7.0-529b72)](https://github.com/kevanwee/pmd-agents/releases/tag/v0.7.0)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.109%2B-007acc)
 
-> **[Download 0.5.2](https://github.com/kevanwee/pmd-agents/releases/tag/v0.5.2)** for local Windows x64. Game artwork is installed separately. Terminal tracking and live Codex transcript observation are verified locally; live native Claude chat tracking remains unverified. This is an unofficial fan project; publication does not grant third-party artwork or branding rights.
+> **[Download 0.7.0](https://github.com/kevanwee/pmd-agents/releases/tag/v0.7.0)** for local Windows x64. Game artwork is installed separately. Terminal tracking and live Codex transcript observation are verified locally; live native Claude chat tracking remains unverified. This is an unofficial fan project; publication does not grant third-party artwork or branding rights.
 
 ## Start here
 
@@ -16,7 +16,7 @@ The installable package is for **local Windows x64 and VS Code 1.109+**. The des
 
 Install the release:
 
-1. Download the [0.5.2 VSIX](https://github.com/kevanwee/pmd-agents/releases/download/v0.5.2/pmd-agents-0.5.2.vsix) and [SHA-256 checksum](https://github.com/kevanwee/pmd-agents/releases/download/v0.5.2/pmd-agents-0.5.2.vsix.sha256). Compare the checksum with `Get-FileHash .\pmd-agents-0.5.2.vsix -Algorithm SHA256`.
+1. Download the [0.7.0 VSIX](https://github.com/kevanwee/pmd-agents/releases/download/v0.7.0/pmd-agents-0.7.0.vsix) and [SHA-256 checksum](https://github.com/kevanwee/pmd-agents/releases/download/v0.7.0/pmd-agents-0.7.0.vsix.sha256). Compare the checksum with `Get-FileHash .\pmd-agents-0.7.0.vsix -Algorithm SHA256`.
 2. In VS Code, run **Extensions: Install from VSIX**, select the download, then **Developer: Reload Window**. Node.js, npm and Python are not needed to install or run the VSIX.
 3. Open **PMD Agents** in Explorer, then **Open guild**. Trust only workspaces you trust to run local extensions.
 4. Under **Connections → Choose asset pack**, select a folder containing a compatible `manifest.json` and artwork you are permitted to use. **The VSIX includes no game artwork.** Without a pack, session observation works but the animated scene is unavailable. Existing source import tools need a source checkout, Python and Pillow; see [Import artwork](#import-artwork). They do not establish permission to use the downloaded material.
@@ -72,6 +72,12 @@ Move colours follow the species' primary type for every type, from the pack's ow
 
 ![Charizard training beside Substitute, Blastoise scouting and Venusaur waiting for attention; simulated demo](docs/screenshots/kanto.png)
 
+### Favorites
+
+Every new teammate gets its own Pokémon. The guild reviews who is already on the team and spawns the first **favorite** nobody is using, top to bottom; once the favorites are all in use, it picks a random species from your pack that no active teammate has. A teammate keeps its Pokémon until you change it.
+
+Add favorites from any Pokémon's menu in the storage system (**☆ Add to favorites**, or per form under **Forms**), then order or remove them under the **Favorites** tab. They are saved in the `pmdAgents.favorites` setting as Pokédex form ids (for example `appletun` or `pawmot-shiny`), so you can also edit or sync them like any setting. Favorites that are not in your pack yet are imported in the background from the pinned SpriteCollab revision, with the usual receipts.
+
 ## Persistent widget
 
 The **PMD Agents** view lives in Explorer alongside your files. Drag its heading to
@@ -119,7 +125,7 @@ npm run package
 
 In VS Code:
 
-1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.6.0.vsix`.
+1. Run **Extensions: Install from VSIX** and choose `artifacts/pmd-agents-0.7.0.vsix`.
 2. Run **Developer: Reload Window**, then look for **PMD Agents** in Explorer. **Open guild** opens its full controls.
 3. Choose a local artwork pack under **Connections → Choose asset pack**.
 4. Every discovered session spawns a Pokémon as it appears. **Connections → Auto-attach** controls this (and **Workspace auto-connect** the narrower, verified-workspace mode). If another guild window shares the same folders, automatic attachment pauses and you choose the intended session manually.
@@ -254,7 +260,7 @@ npm run package
 
 The repository is public. Earlier private-repository Actions jobs were blocked by an account billing/spending restriction; current workflow status is shown by the Checks badge. No billing settings were changed.
 
-The local build has **68 focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
+The local build has **73 focused tests**, plus browser and VS Code integration checks. CI verifies source-only checks, not native provider coverage. See the dated [implementation evidence](docs/IMPLEMENTATION.md) for exact versions and gaps.
 
 See the [0.4.3 code review](docs/REVIEW-2026-10-10.md) for findings and remaining reliability work.
 

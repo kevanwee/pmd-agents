@@ -35,7 +35,7 @@ const claudeLogs=join(claudeHome,'projects',resolve('artifacts/test-workspace').
 await mkdir(claudeLogs,{recursive:true});
 await writeFile(join(claudeLogs,'fixture.jsonl'),JSON.stringify({type:'user',sessionId:'automatic-claude-session',cwd:resolve('artifacts/test-workspace'),version:'2.1.296',entrypoint:'claude-vscode',uuid:'claude-fixture-turn',timestamp:date.toISOString(),message:{role:'user',content:'Synthetic integration fixture'}})+'\n');
 const emptyPack=join(base,'empty-pack');if(packaged)await mkdir(emptyPack);
-await writeFile(profile+'/User/settings.json',JSON.stringify({'security.workspace.trust.enabled':false,'terminal.integrated.shellIntegration.enabled':true,'terminal.integrated.defaultProfile.windows':'PowerShell','workbench.startupEditor':'none',...(packaged?{'pmdAgents.assetPath':emptyPack}:{})}));
+await writeFile(profile+'/User/settings.json',JSON.stringify({'security.workspace.trust.enabled':false,'terminal.integrated.shellIntegration.enabled':true,'terminal.integrated.defaultProfile.windows':'PowerShell','workbench.startupEditor':'none',...(packaged?{'pmdAgents.assetPath':emptyPack}:{'pmdAgents.favorites':['squirtle','pikachu','charmander']})}));
 await runTests({
  vscodeExecutablePath:executable,
  extensionDevelopmentPath:extensionPath,

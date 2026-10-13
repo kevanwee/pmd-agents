@@ -7,7 +7,7 @@ import {Placement} from '../placement';
 import {Navigator,terrains,segment,canStand} from '../navigation';
 import {frameAt,facing,type Pack,type Species,type Point} from '../world';
 import {PokemonPc} from './pc';
-declare global {interface Window {PMD_BOOT:{presentation?:'full'|'widget'|'desktop';quiet?:boolean;workspaces?:string[];scene?:string;autoConnect?:boolean;autoAttach?:boolean;autoState?:string;exclusions?:string[];membership?:Record<string,string>;pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;outsideWorkspace?:number;unsupported:number;readErrors:number;lastScan:number;historyFolders?:number;historyChecked?:number;historyCapped?:boolean};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
+declare global {interface Window {PMD_BOOT:{presentation?:'full'|'widget'|'desktop';quiet?:boolean;workspaces?:string[];scene?:string;autoConnect?:boolean;autoAttach?:boolean;autoState?:string;exclusions?:string[];membership?:Record<string,string>;pack?:Pack;assetBase:string;assetError?:string;mode:string;agents:Agent[];journal?:Record<string,JournalEntry[]>;links?:Record<string,string>;diagnostics?:{files:number;outsideWorkspace?:number;unsupported:number;readErrors:number;lastScan:number;historyFolders?:number;historyChecked?:number;historyCapped?:boolean};observationEnabled?:boolean;evidence?:Record<string,Evidence>;assignments?:Record<string,string>;favorites?:string[];terminalNames?:Record<string,string>;clients?:{id:string;version:string}[]};acquireVsCodeApi?:()=>{postMessage:(msg:unknown)=>void;getState:()=>any;setState:(s:unknown)=>void};}}
 const host=window.acquireVsCodeApi?.();
 const boot=window.PMD_BOOT;
 const pack=boot.pack;
@@ -21,7 +21,7 @@ let autoConnect=boot.autoConnect??true,autoAttach=boot.autoAttach??true,autoStat
 let exclusions=boot.exclusions||[];
 let worldTime=0,showPaths=false,zoom=1,pan={x:0,y:0},view={x:0,y:0,scale:1};
 
-let agents=boot.agents||[],assignments=boot.assignments||{},terminalNames=boot.terminalNames||{};
+let agents=boot.agents||[],assignments=boot.assignments||{},terminalNames=boot.terminalNames||{},favorites=boot.favorites||[];
 let evidence=boot.evidence||{};
 let journal=boot.journal||{};
 let links=boot.links||{},diagnostics=boot.diagnostics,observationEnabled=boot.observationEnabled;
@@ -60,7 +60,7 @@ const img=(file:string)=>{
 };
 const button=(text:string,action:()=>void,className='')=>{const b=document.createElement('button');b.textContent=text;b.className=className;b.dataset.focusKey=className+':'+text;b.onclick=action;return b;};
 const node=(tag:string,text:string,className='')=>{const el=document.createElement(tag);el.textContent=text;el.className=className;return el;};
-const species=(a:Agent):Species|undefined=>pack?.sprites.find(s=>s.id===assignments[a.id])||pack?.sprites[[...a.id].reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,0)%Math.min(3,pack.sprites.length)];
+const species=(a:Agent):Species|undefined=>pack?.sprites.find(s=>s.id===assignments[a.id])||pack?.sprites[[...a.id].reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,0)%pack.sprites.length];
 const label=(a:Agent)=>a.provider==='terminal'?(terminalNames[a.id]||'Terminal'):a.provider==='codex'?'Codex':'Claude Code';
 /** The storage system chooses a Pokémon (or form) for the selected session; imports arrive from the host and join the pack. */
 const pc=new PokemonPc(app,{send,assetBase:boot.assetBase,pack:()=>pack,
@@ -68,6 +68,7 @@ const pc=new PokemonPc(app,{send,assetBase:boot.assetBase,pack:()=>pack,
  sessions:()=>shown().map(a=>({id:a.id,label:label(a),species:species(a)?.id})),
  select:id=>{if(!agents.some(a=>a.id===id))return;selectedByUser=true;selected=id;area=placement.page(id);render();},
  choose:(id,sessionId)=>{if(!agents.some(a=>a.id===sessionId&&a.attached&&!a.ended)||!pack?.sprites.some(s=>s.id===id))return;assignments[sessionId]=id;if(!demo)send({type:'character',id:sessionId,species:id});render();},
+ favorites:()=>favorites,setFavorites:ids=>{favorites=ids;send({type:'favorites',ids});},
  recall:()=>host?.getState()?.pc,remember:state=>host?.setState({...host.getState(),pc:state})});
 /** Move colours by type: two tones per type, original decorative values. */
 const MOVE_COLORS:Record<string,string[]>={normal:['#ebc8ff','#fff0ff'],fire:['#ff9843','#fff1a5'],water:['#70d5ff','#e2faff'],grass:['#7ec950','#ddf899'],electric:['#ffe45c','#fffbd1'],ice:['#a8ecf5','#f0fdff'],fighting:['#ffd287','#fff7d1'],poison:['#d78cf0','#f6e3ff'],ground:['#e6c37a','#fff3cf'],flying:['#c2b8ff','#f1eeff'],psychic:['#ff8fb8','#ffe3ee'],bug:['#c6e05a','#f3ffc6'],rock:['#d2bd7c','#f5ecd0'],ghost:['#9a86d9','#e6dfff'],dragon:['#8f7cff','#e3deff'],dark:['#8d7f7a','#e4d9d5'],steel:['#c9c9e8','#f3f3ff'],fairy:['#ffb3cf','#ffe9f1']};
@@ -368,7 +369,7 @@ window.addEventListener('message',event=>{
  const m=event.data;
  if(m.type==='hookSetup'){hookSetup=m;hookResult=undefined;tab='connections';render();}
  if(m.type==='hookResult'){hookSetup=undefined;hookResult=m;tab='connections';render();}
- if(m.type==='snapshot'){const motionChanged=(typeof m.quiet==='boolean'&&m.quiet!==quiet)||(m.scene&&m.scene!==sceneId);if(typeof m.quiet==='boolean')quiet=m.quiet;if(m.scene&&m.scene!==sceneId){sceneId=m.scene;actors.clear();pan={x:0,y:0};worldTime=0;}if(motionChanged)restart();workspaces=m.workspaces??workspaces;autoConnect=m.autoConnect??autoConnect;autoAttach=m.autoAttach??autoAttach;autoState=m.autoState;exclusions=m.exclusions||[];membership=m.membership||{};journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};render();}
+ if(m.type==='snapshot'){const motionChanged=(typeof m.quiet==='boolean'&&m.quiet!==quiet)||(m.scene&&m.scene!==sceneId);if(typeof m.quiet==='boolean')quiet=m.quiet;if(m.scene&&m.scene!==sceneId){sceneId=m.scene;actors.clear();pan={x:0,y:0};worldTime=0;}if(motionChanged)restart();workspaces=m.workspaces??workspaces;autoConnect=m.autoConnect??autoConnect;autoAttach=m.autoAttach??autoAttach;autoState=m.autoState;exclusions=m.exclusions||[];membership=m.membership||{};journal=m.journal||{};links=m.links||{};diagnostics=m.diagnostics;observationEnabled=m.observationEnabled;evidence=m.evidence||{};if(demo){saved=m.agents;return;}agents=m.agents;assignments=m.assignments||{};terminalNames=m.terminalNames||{};if(Array.isArray(m.favorites)){favorites=m.favorites;pc.favoritesChanged();}render();}
  if(m.type==='visibility'){visible=m.visible;restart();}
  if(m.type==='dex')pc.setDex(m);
  if(m.type==='dexPortraits')pc.portraitsReady(m);

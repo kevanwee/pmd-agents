@@ -6,7 +6,7 @@ import type {Pack,Species} from '../world';
 export interface PcHost {
  send:(msg:unknown)=>void;assetBase:string;pack:()=>Pack|undefined;
  session:()=>{id:string;label:string;species?:string}|undefined;sessions:()=>{id:string;label:string;species?:string}[];select:(id:string)=>void;
- choose:(id:string,sessionId:string)=>void;recall:()=>{view?:string}|undefined;remember:(state:{view:string})=>void;
+ choose:(id:string,sessionId:string)=>void;favorites:()=>string[];setFavorites:(ids:string[])=>void;recall:()=>{view?:string}|undefined;remember:(state:{view:string})=>void;
 }
 const SOURCE='https://github.com/PMDCollab/SpriteCollab/tree/';
 const pad=(n:number)=>String(n).padStart(4,'0');
@@ -16,7 +16,7 @@ type AssetState=string|'pending'|'failed';
 export class PokemonPc {
  private root:HTMLElement;private body:HTMLElement;private title:HTMLElement;private search:HTMLInputElement;private viewButton:HTMLButtonElement;
  private dex?:Dex;private error?:string;private requested=false;
- private view:'game'|'guild'='game';private box=0;private cursor=0;private menu:'none'|'main'|'forms'|'summary'='none';private party=false;private shiny=false;
+ private view:'game'|'guild'='game';private box=0;private cursor=0;private menu:'none'|'main'|'forms'|'summary'='none';private party=false;private favs=false;private shiny=false;
  private portraits=new Map<string,AssetState>();private game=new Map<string,AssetState>();private types?:Record<string,string[]>;private typesRequested=false;
  private importing?:string;private importTarget?:{id:string;label:string};private note='';private opener?:HTMLElement;private progress?:{done:number;total:number;failed?:number;complete?:boolean};
  constructor(parent:HTMLElement,private host:PcHost){
@@ -38,7 +38,7 @@ export class PokemonPc {
  }
  isOpen(){return !this.root.hidden;}
  open(from?:HTMLElement){
-  this.opener=from;this.root.hidden=false;this.note='';this.party=false;this.shiny=false;
+  this.opener=from;this.root.hidden=false;this.note='';this.party=false;this.favs=false;this.shiny=false;
   if(!this.dex&&!this.requested){this.requested=true;this.host.send({type:'dex'});}
   if(!this.types&&!this.typesRequested){this.typesRequested=true;this.host.send({type:'gameTypes'});}
   const current=this.host.session()?.species,pack=this.host.pack();
@@ -46,7 +46,20 @@ export class PokemonPc {
   if(assigned?.dex&&this.dex){const index=this.dex.species.findIndex(s=>s.dex===assigned.dex);if(index>=0){this.box=Math.floor(index/BOX_SIZE);this.cursor=index%BOX_SIZE;}}
   this.menu='none';this.render();this.focusCursor();
  }
- close(){this.root.hidden=true;this.menu='none';this.party=false;this.opener?.focus();}
+ close(){this.root.hidden=true;this.menu='none';this.party=false;this.favs=false;this.opener?.focus();}
+ favoritesChanged(){if(this.isOpen())this.render();}
+ /** Favourites spawn first, top to bottom; the host imports any that are not in the pack yet. */
+ private setFavorites(ids:string[],note:string){this.host.setFavorites(ids);this.note=note;this.render();}
+ private toggleFavorite(species:DexSpecies,form:DexForm){
+  const ids=this.host.favorites(),name=species.name+(form.label==='Normal'?'':' ('+form.label+')');
+  if(ids.includes(form.id))this.setFavorites(ids.filter(id=>id!==form.id),name+' left your favorites.');
+  else if(!form.ready&&!this.host.pack()?.sprites.some(s=>s.id===form.id)){this.note=name+' has no complete sheets yet, so it cannot spawn.';this.render();}
+  else this.setFavorites([...ids,form.id],name+' is favorite #'+(ids.length+1)+'.');
+ }
+ private favoriteName(id:string){
+  const species=this.dex?.species.find(s=>s.forms.some(f=>f.id===id)),form=species?.forms.find(f=>f.id===id);
+  return {species,form,name:species?species.name+(form&&form.label!=='Normal'?' ('+form.label+')':''):id};
+ }
  setDex(m:{dex?:Dex;error?:string}){this.dex=m.dex;this.error=m.error;this.requested=!!m.dex;if(this.isOpen()){if(m.dex)this.open(this.opener);else this.render();}}
  setTypes(m:{types?:Record<string,string[]>;error?:string}){this.types=m.types;this.typesRequested=!!m.types;if(m.error)this.note=m.error;if(this.isOpen())this.render();}
  portraitsReady(m:{ready?:Record<string,string>;failed?:string[];error?:string}){
@@ -98,7 +111,7 @@ export class PokemonPc {
   if(e.key==='Escape'){e.preventDefault();
    if(this.menu==='forms'||this.menu==='summary'){this.menu='main';this.shiny=false;this.render();this.focusMenu();}
    else if(this.menu==='main'){this.menu='none';this.render();this.focusCursor();}
-   else if(this.party){this.party=false;this.render();this.focusCursor();}else this.close();return;}
+   else if(this.party||this.favs){this.party=false;this.favs=false;this.render();this.focusCursor();}else this.close();return;}
   if(e.target instanceof HTMLInputElement)return;
   const keys:Record<string,()=>void>={ArrowLeft:()=>this.move(-1),ArrowRight:()=>this.move(1),ArrowUp:()=>this.move(-6),ArrowDown:()=>this.move(6),PageUp:()=>this.move(0,-1),PageDown:()=>this.move(0,1),Home:()=>this.move(-BOX_SIZE),End:()=>this.move(BOX_SIZE)};
   if(keys[e.key]){e.preventDefault();keys[e.key]();}
@@ -135,6 +148,7 @@ export class PokemonPc {
     const b=item(form.label+' · '+(this.importing===form.id?'Importing…':this.status(form)),()=>this.choose(species,form),!form.ready&&!pack?.sprites.some(s=>s.id===form.id));
     const isShiny=/\bShiny\b/.test(form.label);
     b.onfocus=b.onmouseenter=()=>{if(this.shiny!==isShiny){this.shiny=isShiny;this.updateFront(species);}};
+    item((this.host.favorites().includes(form.id)?'★ Unfavorite ':'☆ Favorite ')+form.label,()=>this.toggleFavorite(species,form));
    }
    item('Back',()=>back('main'));
   }else if(this.menu==='summary'){
@@ -149,6 +163,7 @@ export class PokemonPc {
   }else if(this.menu==='main'){
    const inPack=!!pack?.sprites.some(s=>s.id===base.id);
    item(this.importing===base.id?'Importing…':inPack?'Choose':base.ready?'Import & choose':'No complete sheets yet',()=>this.choose(species,base),(!inPack&&!base.ready)||!!this.importing);
+   item(this.host.favorites().includes(base.id)?'★ Remove from favorites':'☆ Add to favorites',()=>this.toggleFavorite(species,base));
    item('Forms ('+species.forms.length+')',()=>{this.menu='forms';this.render();this.focusMenu();});
    item('Summary',()=>{this.menu='summary';this.render();this.focusMenu();});
    item('Back',()=>back('none'));
@@ -199,8 +214,25 @@ export class PokemonPc {
  private drawGame(page:{index:number;count:number;species:DexSpecies[]}){
   const wrap=el('div','gs');const species=page.species[this.cursor];
   this.requestGame(page.species.map(s=>s.dex));
-  const summary=el('aside','gs-summary');summary.setAttribute('aria-label',this.party?'Guild team':'Selected Pokémon');
-  if(this.party){
+  const summary=el('aside','gs-summary');summary.setAttribute('aria-label',this.party?'Guild team':this.favs?'Favorites':'Selected Pokémon');
+  if(this.favs){
+   summary.append(el('h3','gs-party-title','Favorites'),el('p','muted','New teammates spawn as the first favorite nobody is using, top to bottom; past the list they spawn at random. Add from any Pokémon’s menu.'));
+   const ids=this.host.favorites();if(!ids.length)summary.append(el('p','muted','No favorites yet.'));
+   const list=el('ol','gs-favs');
+   ids.forEach((id,i)=>{
+    const {species,name}=this.favoriteName(id),inPack=!!this.host.pack()?.sprites.some(s=>s.id===id);
+    const li=el('li','gs-fav');li.dataset.fav=id;
+    const icon=species?this.asset('icon',species.dex):undefined;if(icon)li.append(image(this.host.assetBase+icon,'','gs-party-icon'));else li.append(el('span','gs-party-icon'));
+    li.append(el('span','gs-party-text',(i+1)+'. '+name+(inPack?'':' · importing')));
+    const act=(text:string,label:string,fn:()=>void,disabled=false)=>{const b=document.createElement('button');b.className='gs-fav-act';b.textContent=text;b.setAttribute('aria-label',label);b.dataset.key='fav:'+id+':'+text;b.disabled=disabled;b.onclick=fn;li.append(b);};
+    const swap=(j:number)=>{const next=[...ids];[next[i],next[j]]=[next[j],next[i]];this.setFavorites(next,name+' is now favorite #'+(j+1)+'.');};
+    act('▲','Move '+name+' up',()=>swap(i-1),i===0);act('▼','Move '+name+' down',()=>swap(i+1),i===ids.length-1);
+    act('✕','Remove '+name+' from favorites',()=>this.setFavorites(ids.filter(x=>x!==id),name+' left your favorites.'));
+    if(species)this.requestGame([species.dex]);
+    list.append(li);
+   });
+   summary.append(list);
+  }else if(this.party){
    // The team panel takes the summary's place so the box stays browsable while the whole team is dressed.
    summary.append(el('h3','gs-party-title','Guild team'),el('p','muted','Pick the teammate you are dressing, then choose from the box.'));
    const sessions=this.host.sessions();if(!sessions.length)summary.append(el('p','muted','No sessions are connected.'));
@@ -249,12 +281,13 @@ export class PokemonPc {
    boxPanel.append(gridWrap);
   }
   const bar=el('div','gs-bar');
-  const team=el('button','gs-tab','Guild team');team.setAttribute('aria-pressed',String(this.party));team.onclick=()=>{this.party=!this.party;this.menu='none';this.note='';this.render();};
+  const team=el('button','gs-tab','Guild team');team.setAttribute('aria-pressed',String(this.party));team.onclick=()=>{this.party=!this.party;this.favs=false;this.menu='none';this.note='';this.render();};
+  const favs=el('button','gs-tab','Favorites');favs.setAttribute('aria-pressed',String(this.favs));favs.onclick=()=>{this.favs=!this.favs;this.party=false;this.menu='none';this.note='';this.render();};favs.dataset.key='favs';
   const fetchAll=el('button','gs-tab',this.progress&&!this.progress.complete?'Fetching '+this.progress.done+' / '+this.progress.total:this.progress?.complete?'Game sprites fetched'+(this.progress.failed?' · '+this.progress.failed+' missing':''):'Fetch all game sprites');
   (fetchAll as HTMLButtonElement).disabled=!!this.progress&&!this.progress.complete;fetchAll.onclick=()=>{this.progress={done:0,total:1};this.host.send({type:'gameImportAll'});this.render();};
   const back=el('button','gs-tab gs-return','Return');back.onclick=()=>this.close();
   team.dataset.key='team';fetchAll.dataset.key='fetch';back.dataset.key='return';
-  bar.append(team,fetchAll,back);boxPanel.append(bar);
+  bar.append(team,favs,fetchAll,back);boxPanel.append(bar);
   if(this.note)boxPanel.append(el('p','pc-note',this.note));
   wrap.append(summary,boxPanel);this.body.append(wrap);
  }

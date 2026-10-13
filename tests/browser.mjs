@@ -74,7 +74,11 @@ await page.locator('.pc-slot[data-dex="25"] img').waitFor();assert.equal(await p
 await page.getByRole('searchbox').fill('#133');await page.getByRole('searchbox').press('Enter');
 await page.keyboard.press('ArrowLeft');assert.equal(await page.locator('.pc-slot[aria-pressed=true]').getAttribute('data-dex'),'25');
 await page.keyboard.press('Enter');
-assert.deepEqual(await page.evaluate(()=>[...document.querySelectorAll('.pc-menu button')].map(b=>b.textContent)),['Import & choose','Forms (3)','Summary','Back']);
+assert.deepEqual(await page.evaluate(()=>[...document.querySelectorAll('.pc-menu button')].map(b=>b.textContent)),['Import & choose','☆ Add to favorites','Forms (3)','Summary','Back']);
+// Favorites: added from the menu, sent to the host (which imports and spawns them), listed in priority order.
+await page.getByRole('button',{name:'☆ Add to favorites',exact:true}).click();
+assert.deepEqual((await page.evaluate(()=>window.sent)).filter(m=>m.type==='favorites').at(-1),{type:'favorites',ids:['pikachu']});
+assert.ok(await page.getByRole('button',{name:'★ Remove from favorites',exact:true}).isVisible());
 await page.getByRole('button',{name:'Summary',exact:true}).click();assert.ok(await page.getByText('Ready to train',{exact:true}).isVisible());
 await page.keyboard.press('Escape');await page.getByRole('button',{name:'Forms (3)',exact:true}).click();
 assert.ok(await page.getByRole('button',{name:'Gigantamax · Portrait only',exact:true}).isDisabled());
@@ -82,6 +86,13 @@ await page.getByRole('button',{name:'Shiny · Ready',exact:true}).click();
 assert.deepEqual((await page.evaluate(()=>window.sent)).at(-1),{type:'dexImport',path:'0025/0000/0001',id:'pikachu-shiny'});
 assert.ok(await page.getByRole('button',{name:'Shiny · Importing…',exact:true}).isVisible());
 await page.screenshot({path:'artifacts/guild-pc.png'});
+await page.keyboard.press('Escape');await page.keyboard.press('Escape');
+if(await page.getByRole('button',{name:'Switch to the game view with main-series sprites'}).count())await page.getByRole('button',{name:'Switch to the game view with main-series sprites'}).click();
+await page.getByRole('button',{name:'Favorites',exact:true}).click();
+assert.match(await page.locator('.gs-fav').first().textContent(),/1\. Pikachu/);
+assert.ok(await page.getByRole('button',{name:'Move Pikachu up'}).isDisabled());
+await page.getByRole('button',{name:'Favorites',exact:true}).click();
+if(await page.getByRole('button',{name:'Switch to the guild view with PMD portraits'}).count())await page.getByRole('button',{name:'Switch to the guild view with PMD portraits'}).click();
 const imported={...manifest.sprites.find(s=>s.id==='eevee'),id:'pikachu-shiny',name:'Pikachu (Shiny)',dex:25,form:{path:'0025/0000/0001',label:'Shiny'}};
 // Change the selected teammate while the original Codex import is still pending.
 await page.getByRole('button',{name:/Switch to the game view/}).click();

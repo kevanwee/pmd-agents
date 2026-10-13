@@ -1,4 +1,5 @@
 import {DesktopWidget,desktopExecutable} from './desktop';
+import {assignSpawns,sanitizeFavorites} from './favorites';
 import {ensureWidgetIcon,WIDGET_ICON} from './widgetIcon';
 import * as vscode from 'vscode';
 import {randomUUID} from 'node:crypto';
@@ -52,6 +53,15 @@ export async function activate(context:vscode.ExtensionContext) {
  const terminalNames=new Map<string,string>();
  let terminalSequence=0;
  const assignments={...context.workspaceState.get<Record<string,string>>('characters',{})};
+ // New teammates get a Pokémon here, once: favourites first in order, then a random species no active teammate is using.
+ const packIds=new Set<string>(),favoriteImports=new Set<string>();
+ let importFavorites:(()=>void)|undefined;
+ const favorites=()=>sanitizeFavorites(vscode.workspace.getConfiguration('pmdAgents').get('favorites',[]));
+ const spawn=()=>{
+  if(!packIds.size)return;
+  const active=[...store.agents.values()].filter(a=>a.attached&&!a.ended).map(a=>a.id);
+  if(assignSpawns(active,assignments,favorites(),[...packIds]))void context.workspaceState.update('characters',assignments);
+ };
  // Automatic membership is workspace scoped; simultaneous overlapping windows pause it.
  // Explicit links remain activation-local; exclusions and character choices persist.
  let sequence=0;
@@ -59,7 +69,7 @@ export async function activate(context:vscode.ExtensionContext) {
  const evidence=sessions.evidence;
  let watcher:ReturnType<typeof startTranscriptWatcher>|undefined;
  let publishTimer:ReturnType<typeof setTimeout>|undefined;
- const snapshot=()=>({type:'snapshot',workspaces:(vscode.workspace.workspaceFolders||[]).map(f=>f.name),autoConnect:autoEnabled(),autoAttach:autoAttachEnabled(),autoState:lease?.state,exclusions:sessions.exclusions(),membership:Object.fromEntries(sessions.membership),scene:context.workspaceState.get<string>('scene','forest'),quiet:context.workspaceState.get<boolean>('quiet',false),sequence:++sequence,agents:store.snapshot(),journal:sessions.journal.snapshot(),links:Object.fromEntries(sessions.links),diagnostics:watcher?.diagnostics,observationEnabled:!!watcher,evidence:Object.fromEntries(evidence),terminalNames:Object.fromEntries(terminalNames),assignments});
+ const snapshot=()=>(spawn(),{type:'snapshot',favorites:favorites(),workspaces:(vscode.workspace.workspaceFolders||[]).map(f=>f.name),autoConnect:autoEnabled(),autoAttach:autoAttachEnabled(),autoState:lease?.state,exclusions:sessions.exclusions(),membership:Object.fromEntries(sessions.membership),scene:context.workspaceState.get<string>('scene','forest'),quiet:context.workspaceState.get<boolean>('quiet',false),sequence:++sequence,agents:store.snapshot(),journal:sessions.journal.snapshot(),links:Object.fromEntries(sessions.links),diagnostics:watcher?.diagnostics,observationEnabled:!!watcher,evidence:Object.fromEntries(evidence),terminalNames:Object.fromEntries(terminalNames),assignments});
  const publish=()=>{if(!publishTimer)publishTimer=setTimeout(()=>{publishTimer=undefined;post(snapshot());},80);};
  const receive=(e:Event,direct:boolean,source:Evidence={source:e.provider==='terminal'?'terminal':'hook'})=>{
   sessions.receive(e,direct,source);reconcile();
@@ -82,7 +92,7 @@ export async function activate(context:vscode.ExtensionContext) {
   publish();
  };
  observe();
- context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(()=>{lease?.eligible.clear();reconcile();observe();void renew();}),vscode.workspace.onDidChangeConfiguration(e=>{if(e.affectsConfiguration('pmdAgents.observeLocalChats'))observe();if(e.affectsConfiguration('pmdAgents.autoConnect')||e.affectsConfiguration('pmdAgents.autoAttach')){reconcile();publish();}}),{dispose(){watcher?.dispose();clearTimeout(publishTimer);}});
+ context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(()=>{lease?.eligible.clear();reconcile();observe();void renew();}),vscode.workspace.onDidChangeConfiguration(e=>{if(e.affectsConfiguration('pmdAgents.observeLocalChats'))observe();if(e.affectsConfiguration('pmdAgents.autoConnect')||e.affectsConfiguration('pmdAgents.autoAttach')){reconcile();publish();}if(e.affectsConfiguration('pmdAgents.favorites')){importFavorites?.();publish();}}),{dispose(){watcher?.dispose();clearTimeout(publishTimer);}});
  const emit=(session:string,kind:Event['kind'],extra:Partial<Event>={})=>receive({v:1,id:randomUUID(),session,provider:'terminal',kind,at:Date.now(),...extra},true);
  function addTerminal(t:vscode.Terminal) {
   if(terminals.has(t))return terminals.get(t)!;
@@ -110,6 +120,7 @@ export async function activate(context:vscode.ExtensionContext) {
   const local=join(context.extensionPath,'assets','local');
   let directory=configured||(existsSync(join(local,'manifest.json'))?local:join(homedir(),'.pmd-agents','assets')),pack:Pack|undefined,assetError='';
   try{pack=await loadPack(directory);}catch{assetError='Choose a local PMD asset pack to bring the guild to life.';}
+  for(const s of pack?.sprites||[])packIds.add(s.id);
   if(disposed||!views.has(webview)||mounts.get(webview)!==generation)return;
   // The living Pokédex: catalog, box portraits and species imports are pinned SpriteCollab fetches into the local pack, one at a time.
   let dex:Dex|undefined,types:GameTypes|undefined,importQueue=Promise.resolve(),gameImport:Promise<unknown>|undefined;
@@ -125,8 +136,23 @@ export async function activate(context:vscode.ExtensionContext) {
    const element=pack.sprites.find(s=>s.dex===species.dex)?.element||types?.[String(species.dex).padStart(4,'0')]?.[0];
    const result=await importSpecies({id,name:species.name,dex:species.dex,path,label:form.label,element,portraitPath:portraitPath(species,path)},cachedFetch(directory),await spriteNames());
    await writeImport(directory,result,validateSpecies);
-   pack.sprites.push(result.species);return result.species;
+   pack.sprites.push(result.species);packIds.add(result.species.id);return result.species;
   };
+  // Favourites missing from the pack import in the background, one at a time, so they can spawn.
+  importFavorites=()=>{
+   if(!pack)return;
+   for(const id of favorites()){
+    if(packIds.has(id)||favoriteImports.has(id))continue;favoriteImports.add(id);
+    importQueue=importQueue.then(async()=>{
+     try{
+      dex??=await loadDex(directory,trackerFetch);
+      const form=dex.species.flatMap(s=>s.forms).find(f=>f.id===id);if(!form?.ready)return;
+      const species=await importForm(form.path,id);post({type:'dexImport',path:form.path,id,species});publish();
+     }catch{favoriteImports.delete(id);}
+    });
+   }
+  };
+  importFavorites();
   webview.options={enableScripts:true,localResourceRoots:[vscode.Uri.joinPath(context.extensionUri,'media'),...(pack?[vscode.Uri.file(directory)]:[])]};
   const uri=(...p:string[])=>webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri,...p)).toString();
   const nonce=randomUUID().replaceAll('-','');
@@ -201,6 +227,7 @@ export async function activate(context:vscode.ExtensionContext) {
       catch(error){void webview.postMessage({type:'dexImport',path,id,error:error instanceof Error?error.message:'Import failed.'});}
      });
     }
+    if(msg.type==='favorites'&&Array.isArray(msg.ids)){await vscode.workspace.getConfiguration('pmdAgents').update('favorites',sanitizeFavorites(msg.ids),vscode.ConfigurationTarget.Global);publish();}
     if(msg.type==='setup')await beginSetup(false,msg.provider);
     if(msg.type==='installHooks'&&typeof msg.id==='string'&&pendingSetup?.id===msg.id){
      const {id,plan}=pendingSetup!;pendingSetup=undefined;
@@ -283,5 +310,5 @@ export async function activate(context:vscode.ExtensionContext) {
   void vscode.commands.executeCommand('pmdAgents.widget.focus',{preserveFocus:true}).then(undefined,()=>{
    if(!disposed)indicator.tooltip='PMD Agents: use Show Sidebar Widget to open the guild.';
   });
- return {snapshot:()=>store.snapshot(),...(context.extensionMode===vscode.ExtensionMode.Test?{registration:receiver.registration,ready:()=>ready,widgetReady:()=>!!widget&&initializedViews.has(widget.webview),desktopState:()=>({bound:desktopBound,error:desktopError,minimized:ownerMinimized}),sessions}: {})};
+ return {snapshot:()=>store.snapshot(),...(context.extensionMode===vscode.ExtensionMode.Test?{registration:receiver.registration,ready:()=>ready,widgetReady:()=>!!widget&&initializedViews.has(widget.webview),desktopState:()=>({bound:desktopBound,error:desktopError,minimized:ownerMinimized}),sessions,assignments:()=>({...assignments})}: {})};
 }
