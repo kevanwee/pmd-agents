@@ -1,0 +1,14 @@
+{
+  "entry": [
+    "src/hook.ts",
+    "src/webview/app.ts",
+    "src/webview/style.css",
+    "tests/extension.ts",
+    "scripts/**/*.{mjs,ts}"
+  ],
+  "ignorePatterns": [
+    "artifacts/**",
+    "assets/local/**",
+    "native/**"
+  ]
+}

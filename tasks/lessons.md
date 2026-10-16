@@ -42,3 +42,7 @@
 - 12 October 2026: The desktop widget must open at a comfortable size every time (owner's reference: the Explorer widget's size), configurable in settings; remember only its position. Its window icon is Appletun's sprite, fetched into the local pack rather than bundled.
 - 13 October 2026: New teammates must not all be Eevee or Riolu. Review the active team and spawn the first unused favorite (ordered, kept in the storage system and the `pmdAgents.favorites` setting), then a random unused species. Make the release when done.
 - 13 October 2026: The Favorites panel must fit without scroll bars, with equal sprite heights, drag-to-reorder and click-to-change-form; clicking outside a menu closes it. Never replace a published release; fixes ship as a new patch release.
+
+- Architecture review (16 October 2026): run Fallow and verify its findings before cleanup; implement polymorphic classes where behaviour warrants a shared contract, retain runtime-neutral logic, and show implemented classes in C4/component and code-level diagrams. Distinguish completed refactors, remaining findings and validation failures.
+
+- Refactor constraint (16 October 2026): preserve the existing user-facing appearance and interactions during code-quality cleanup; verify affected behaviour against the pre-refactor implementation and browser checks.

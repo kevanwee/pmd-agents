@@ -118,3 +118,50 @@ flowchart LR
 | `npm run test:extension`, `test:package` | A real VS Code instance in an isolated profile, from source and from the packaged VSIX |
 
 Pack-dependent tests are skipped in source-only CI.
+
+## C4: transcript components and classes (16 October 2026)
+
+```mermaid
+C4Component
+  title Extension host - transcript ingestion
+  Container_Boundary(host, "Extension host") {
+    Component(tail, "JsonlTail", "TypeScript class", "Bounded JSONL reads and replacement detection")
+    Component(parser, "TranscriptParser", "TypeScript class", "Validates timestamps and builds stable privacy-filtered events")
+    Component(decoder, "TranscriptDecoder", "Abstract TypeScript class", "Provider-specific records to allowlisted hook metadata")
+    Component(codex, "CodexTranscriptDecoder", "Runtime-neutral TypeScript", "Codex turn, pulse and tool semantics")
+    Component(claude, "ClaudeTranscriptDecoder", "Runtime-neutral TypeScript", "Claude message, parallel-tool and turn-boundary semantics")
+    Component(normalizer, "normalize", "Node module", "Hashes identifiers and strips raw content")
+    Component(sessions, "Sessions / GuildStore", "TypeScript classes", "Membership, ordering and truthful session state")
+  }
+  Rel(tail, parser, "Supplies records and stable offsets")
+  Rel(parser, decoder, "Delegates record interpretation")
+  Rel(codex, decoder, "Implements")
+  Rel(claude, decoder, "Implements")
+  Rel(parser, normalizer, "Builds events from decoded hooks")
+  Rel(parser, sessions, "Supplies events through watcher")
+```
+
+```mermaid
+classDiagram
+  class TranscriptDecoder {
+    <<abstract>>
+    #turn
+    +currentTurn
+    +decode(record, sessionId, emit)*
+  }
+  class CodexTranscriptDecoder {
+    +decode(record, sessionId, emit)
+  }
+  class ClaudeTranscriptDecoder {
+    +decode(record, sessionId, emit)
+  }
+  class TranscriptParser {
+    -decoder
+    +parse(record, offset)
+  }
+  TranscriptDecoder <|-- CodexTranscriptDecoder
+  TranscriptDecoder <|-- ClaudeTranscriptDecoder
+  TranscriptParser *-- TranscriptDecoder
+```
+
+The parser selects a strategy once per transcript; version gating remains in `metadata()`. Decoders preserve turn state without reading files, accessing a clock, hashing identifiers or using a DOM. They can run unchanged in Node or a browser bundle (runtime isomorphism). The production watcher remains local to the extension host; this does not add browser observation or a provider API. See [the code review](docs/CODE-QUALITY-REVIEW-2026-10-16.md).
