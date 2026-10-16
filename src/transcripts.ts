@@ -3,6 +3,7 @@ import {homedir} from 'node:os';
 import {join,resolve,relative,isAbsolute,basename} from 'node:path';
 import {createHash} from 'node:crypto';
 import {normalize} from './provider';
+import {TranscriptDecoder,CodexTranscriptDecoder,ClaudeTranscriptDecoder} from './transcript-decoder';
 import type {Event,Provider} from './core';
 import {CodexDirectoryScan} from './discovery';
 import {workspaceKey} from './autoconnect';
@@ -24,46 +25,19 @@ export function inWorkspace(cwd:string,roots:string[]){
  return roots.some(root=>{const r=relative(resolve(root),resolve(cwd));return r===''||r!=='..'&&!r.startsWith('..\\')&&!r.startsWith('../')&&!isAbsolute(r);});
 }
 export class TranscriptParser {
- private turn:string|undefined;
- constructor(readonly meta:Metadata){}
+ private readonly decoder: TranscriptDecoder;
+ constructor(readonly meta:Metadata) {
+  this.decoder = meta.provider === 'codex' ? new CodexTranscriptDecoder() : new ClaudeTranscriptDecoder();
+ }
  parse(record:any,offset:string):Event[] {
   if(!record||typeof record!=='object')return [];
   const at=Date.parse(record.timestamp);if(!Number.isFinite(at))return [];
   const results:Event[]=[];
   const emit=(hook_event_name:string,extra:Record<string,unknown>={},kind?:Event['kind'])=>{
-   const e=normalize(this.meta.provider,{session_id:this.meta.id,hook_event_name,...(this.turn?{turn_id:this.turn}:{}),...extra});
+   const e=normalize(this.meta.provider,{session_id:this.meta.id,hook_event_name,...(this.decoder.currentTurn?{turn_id:this.decoder.currentTurn}:{}),...extra});
    if(e){if(kind)e.kind=kind;e.id='log:'+hash(this.meta.id+':'+offset+':'+e.kind+':'+String(extra.tool_use_id||''));e.at=at;results.push(e);}
   };
-  if(this.meta.provider==='codex'){
-   const p=record.payload;
-   if(!p||typeof p!=='object')return [];
-   if(typeof p.turn_id==='string')this.turn=p.turn_id;
-   if(record.type==='event_msg'){
-    if(p.type==='task_started')emit('UserPromptSubmit');
-    if(p.type==='task_complete')emit(p.error?'StopFailure':'Stop');
-    if(p.type==='turn_aborted')emit('Interrupt');
-   }
-   if(record.type==='response_item'){
-    if(p.type==='reasoning'||p.type==='message'&&p.role==='assistant')emit('UserPromptSubmit',{},'pulse');
-    if(['function_call','custom_tool_call'].includes(p.type)&&typeof p.name==='string'&&typeof p.call_id==='string')
-     emit('PreToolUse',{tool_name:p.name.split('.').pop(),tool_use_id:p.call_id});
-    if(['function_call_output','custom_tool_call_output'].includes(p.type)&&typeof p.call_id==='string')
-     emit('PostToolUse',{tool_use_id:p.call_id});
-   }
-  }else{
-   if(record.sessionId!==this.meta.id||record.isSidechain)return [];
-   const blocks=record.message?.content;
-   if(record.type==='user'){
-    const resultBlocks=Array.isArray(blocks)?blocks.filter((b:any)=>b?.type==='tool_result'):[];
-    if(resultBlocks.length){for(const b of resultBlocks)if(typeof b.tool_use_id==='string')emit('PostToolUse',{tool_use_id:b.tool_use_id});}
-    else if(record.message?.role==='user'&&!record.toolUseResult){this.turn=record.uuid;emit('UserPromptSubmit');}
-   }
-   if(record.type==='assistant'){
-    emit('UserPromptSubmit',{},'pulse');
-    if(Array.isArray(blocks))for(const b of blocks)if(b?.type==='tool_use'&&typeof b.name==='string'&&typeof b.id==='string')emit('PreToolUse',{tool_name:b.name,tool_use_id:b.id});
-    if(['end_turn','stop_sequence'].includes(record.message?.stop_reason))emit('Stop');
-   }
-  }
+  this.decoder.decode(record,this.meta.id,emit);
   return results;
  }
 }
